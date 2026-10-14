@@ -13,7 +13,7 @@ import { encodeCardState, decodeCardState, type CardState } from "../card/share"
 import { SelectionToolbar } from "../components/SelectionToolbar";
 import { AlignCenter, AlignLeft, AlignRight, ChevronLeft, ChevronRight, ClipboardPaste, Download, Link2, Plus, Trash2 } from "lucide-react";
 
-const DEFAULT_TITLE = "亮";
+const DEFAULT_TITLE = "哔";
 const DEFAULT_BODY = `我大喊你的名字
 在地下停车场里
 
