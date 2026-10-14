@@ -1,13 +1,10 @@
 # TODO
 
-- [ ] 图片主题：theme 加 `image?` + `scrim?` 字段，卡片三层渲染（图 cover → 蒙层 → 文字）
-  - 风格 1 留白直排：选自带留白的图（天空/雾/雪原/海平线），文字直排不加遮罩
-  - 风格 2 渐变蒙层：任意图全幅 + 半透明深色渐变（文字区深），浅色文字
-  - 图片 1080 宽压缩 200-400KB 自托管 static；分享链接只带 theme id
-  - 首批场景：夜空、云海、海岸、雪原、雾林、夕阳、街灯（6-10 张）
+- [x] 图片主题：7 个(星野/雪原/暮海/晨光/街市/雾林/云山)三层渲染(图 cover → 蒙层 → 白字+暗晕)
+  - 留白直排主题正文顶对齐(bodyTop)+三段式蒙层
+  - 图 1080×1440 压缩自托管 static/images;分享链接只带 theme id
 - [x] 选区着色:色点固定化(首位墨色 + 固定 6 色),不再随主题走;气泡两行防溢出
-- [ ] /changelog 页面:渲染 CHANGELOG.md(服务端读文件或打进构建),实时反映已发布版本
-- [ ] 首页入口:header 加链接(target="_blank" 新标签打开 /changelog)
+- [x] /changelog 页面(服务端读根 CHANGELOG.md,发布 build 时随 dist 快照)+ 首页 header「更新日志」入口(新标签打开)
 - [ ] 设置持久化到 localStorage:署名(署名/日期/位置)、对齐、字号、选中主题
   - 读取优先级:url param(?c=) > localStorage > 默认值
   - 变更时写回;url param 命中时不被 localStorage 覆盖

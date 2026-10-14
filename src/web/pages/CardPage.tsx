@@ -245,7 +245,12 @@ export function CardPage() {
             </span>
           </div>
         </div>
-        <span className="text-sm text-ink-faint">dogdog.work</span>
+        <div className="flex items-center gap-3">
+          <a href="/changelog" target="_blank" rel="noreferrer" className="text-sm text-ink-faint hover:text-ink">
+            更新日志
+          </a>
+          <span className="text-sm text-ink-faint">dogdog.work</span>
+        </div>
       </header>
 
       {/* 大屏左右布局:左卡片主区 + 右控制列;移动单列流(卡片→导出→控件→主题) */}

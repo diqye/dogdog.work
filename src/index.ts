@@ -1,6 +1,6 @@
 import { serve } from "bun";
 import index from "./index.html";
-import { api, statics } from "./server";
+import { api, pages, statics } from "./server";
 
 const server = serve({
   port: 3000,
@@ -10,6 +10,9 @@ const server = serve({
 
     // 静态文件(gpress staticApi)
     "/static/*": (req) => statics.runWith404(req),
+
+    // 业务页面数据路由(精确路径优先于 SPA fallback)
+    "/changelog.md": (req) => pages.runWith404(req),
 
     // SPA fallback:其余路径交给前端路由(wouter)
     "/*": index,

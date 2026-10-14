@@ -36,6 +36,9 @@ for (const output of result.outputs) {
   console.log(` ${path.relative(cwd, output.path)}  ${(output.size / 1024).toFixed(1)} KB`);
 }
 
+// CHANGELOG.md 随 dist 走(/changelog.md 路由读 cwd 根)
+await cp(path.join(cwd, "CHANGELOG.md"), path.join(outdir, "CHANGELOG.md"));
+
 // 静态文件(css 引用的 woff2 保持独立文件按需加载,不进 bundle)
 await cp(path.join(cwd, "static"), path.join(outdir, "static"), { recursive: true });
 console.log(" static/ -> dist/static");

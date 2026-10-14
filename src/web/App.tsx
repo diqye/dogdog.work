@@ -4,12 +4,14 @@
 
 import { Route, Switch } from "wouter";
 import { CardPage } from "./pages/CardPage";
+import { ChangelogPage } from "./pages/ChangelogPage";
 import { HelloPage } from "./pages/HelloPage";
 
 export function App() {
   return (
     <Switch>
       <Route path="/" component={CardPage} />
+      <Route path="/changelog" component={ChangelogPage} />
       <Route path="/hello" component={HelloPage} />
       <Route>
         <div className="min-h-[50vh] flex items-center justify-center text-ink-soft">页面不存在</div>
