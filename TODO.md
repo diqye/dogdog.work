@@ -5,6 +5,4 @@
   - 图 1080×1440 压缩自托管 static/images;分享链接只带 theme id
 - [x] 选区着色:色点固定化(首位墨色 + 固定 6 色),不再随主题走;气泡两行防溢出
 - [x] /changelog 页面(服务端读根 CHANGELOG.md,发布 build 时随 dist 快照)+ 首页 header「更新日志」入口(新标签打开)
-- [ ] 设置持久化到 localStorage:署名(署名/日期/位置)、对齐、字号、选中主题
-  - 读取优先级:url param(?c=) > localStorage > 默认值
-  - 变更时写回;url param 命中时不被 localStorage 覆盖
+- [x] 设置持久化到 localStorage(署名/对齐/字号/主题;优先级 url param > localStorage > 默认;逐字段脏值校验)

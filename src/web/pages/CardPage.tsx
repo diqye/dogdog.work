@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { CARD_W, CARD_H, textToBodyHtml, stripHtml, parseCardText, type CardContent } from "../card/types";
+import { CARD_W, CARD_H, textToBodyHtml, stripHtml, parseCardText, FONT_SIZES, ALIGNS, SIG_POSITIONS, type CardContent } from "../card/types";
 import { THEMES, themeById, themeBackgroundStyle, accentDots } from "../card/themes";
 import { Poem, type Align, type FontSize, type SigPos } from "../card/templates/Poem";
 import { exportCards } from "../card/export";
@@ -31,7 +31,37 @@ const DEFAULT_SIGNATURE = "半块橡皮";
 /** 打开分享链接还原状态;坏链/无参回退默认内容 */
 const INITIAL = decodeCardState(new URLSearchParams(location.search).get("c") ?? "");
 
-const INITIAL_THEME_ID = THEMES.some((t) => t.id === INITIAL?.themeId) ? INITIAL!.themeId : THEMES[0]!.id;
+/* 设置持久化(localStorage):只存版式设置,内容(标题/正文)不存。
+ * 读取优先级:url param > localStorage > 默认 —— 逐字段 ?? 链实现(url 命中时 INITIAL 字段全量存在);
+ * 脏值(手改/旧版本结构)逐项合法性校验后采用 */
+const LS_SETTINGS_KEY = "card-settings";
+
+interface SavedSettings {
+  themeId?: string;
+  fontSize?: FontSize;
+  align?: Align;
+  sigPos?: SigPos;
+  signature?: string;
+  sigOn?: boolean;
+  dateOn?: boolean;
+}
+
+const SAVED: SavedSettings = (() => {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_SETTINGS_KEY) ?? "{}") as Record<string, unknown>;
+    return {
+      themeId: THEMES.some((t) => t.id === s.themeId) ? (s.themeId as string) : undefined,
+      fontSize: FONT_SIZES.includes(s.fontSize as FontSize) ? (s.fontSize as FontSize) : undefined,
+      align: ALIGNS.includes(s.align as Align) ? (s.align as Align) : undefined,
+      sigPos: SIG_POSITIONS.includes(s.sigPos as SigPos) ? (s.sigPos as SigPos) : undefined,
+      signature: typeof s.signature === "string" && s.signature !== "" ? s.signature : undefined,
+      sigOn: typeof s.sigOn === "boolean" ? s.sigOn : undefined,
+      dateOn: typeof s.dateOn === "boolean" ? s.dateOn : undefined,
+    };
+  } catch {
+    return {};
+  }
+})();
 
 /** 预览缩放:跟随容器宽,卡片保持设计尺寸 */
 function useFitScale(ref: RefObject<HTMLDivElement | null>) {
@@ -56,13 +86,13 @@ export function CardPage() {
   // 多页正文:页数用户管理,新增/删除见下方页切换条
   const [pages, setPages] = useState<string[]>(INITIAL?.pages ?? [textToBodyHtml(DEFAULT_BODY)]);
   const [cur, setCur] = useState(0);
-  const [signature, setSignature] = useState(INITIAL?.signature ?? DEFAULT_SIGNATURE);
-  const [sigOn, setSigOn] = useState(INITIAL?.sigOn ?? true);
-  const [sigPos, setSigPos] = useState<SigPos>(INITIAL?.sigPos ?? "br");
-  const [dateOn, setDateOn] = useState(INITIAL?.dateOn ?? true);
-  const [themeId, setThemeId] = useState(INITIAL_THEME_ID);
-  const [fontSize, setFontSize] = useState<FontSize>(INITIAL?.fontSize ?? "m");
-  const [align, setAlign] = useState<Align>(INITIAL?.align ?? "left");
+  const [signature, setSignature] = useState(INITIAL?.signature ?? SAVED.signature ?? DEFAULT_SIGNATURE);
+  const [sigOn, setSigOn] = useState(INITIAL?.sigOn ?? SAVED.sigOn ?? true);
+  const [sigPos, setSigPos] = useState<SigPos>(INITIAL?.sigPos ?? SAVED.sigPos ?? "br");
+  const [dateOn, setDateOn] = useState(INITIAL?.dateOn ?? SAVED.dateOn ?? true);
+  const [themeId, setThemeId] = useState(INITIAL?.themeId ?? SAVED.themeId ?? THEMES[0]!.id);
+  const [fontSize, setFontSize] = useState<FontSize>(INITIAL?.fontSize ?? SAVED.fontSize ?? "m");
+  const [align, setAlign] = useState<Align>(INITIAL?.align ?? SAVED.align ?? "left");
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -103,6 +133,13 @@ export function CardPage() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // 设置变化写回 localStorage(含 url 打开后的手动调整,下次无参打开时生效);
+  // 空署名不持久化 —— 分享链常无署名,回写会把默认值永久清空
+  useEffect(() => {
+    const s: SavedSettings = { themeId, fontSize, align, sigPos, sigOn, dateOn, signature: signature === "" ? undefined : signature };
+    localStorage.setItem(LS_SETTINGS_KEY, JSON.stringify(s));
+  }, [themeId, fontSize, align, sigPos, signature, sigOn, dateOn]);
 
   // 错误提示弹几秒自动消失
   useEffect(() => {
