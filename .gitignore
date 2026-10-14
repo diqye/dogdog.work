@@ -1,0 +1,22 @@
+# dependencies (bun install)
+node_modules
+
+# output
+dist
+
+# dotenv environment variable files
+.env
+.env.dev
+
+# caches
+.cache
+*.tsbuildinfo
+
+# IDE
+.idea
+
+# Finder (MacOS) folder config
+.DS_Store
+
+# pi agent local config
+.pi

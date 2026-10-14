@@ -1,0 +1,170 @@
+/**
+ * 导出管线:modern-screenshot(SVG foreignObject 路线,相对 html-to-image 修复了
+ * iOS Safari 的字体嵌入时序)。PNG 无损渐变(JPEG 压缩平滑渐变会出色带);
+ * 单页超 2MB 自动降 scale 重截(2 → 1.5 → 1)。
+ * 截图源是离屏设计尺寸渲染层(无 transform/编辑态),字体嵌入一次全页共用。
+ */
+
+import { domToBlob } from "modern-screenshot";
+import { CARD_W } from "./types";
+
+/** 单页体积上限:抖音上传足够,超限降 scale 换体积 */
+const MAX_BYTES = 2 * 1024 * 1024;
+const SCALES = [2, 1.5, 1] as const;
+
+/**
+ * 正文居中层布局冻结:flex + shrink-to-fit 的正文容器宽度恰等于内容宽(零余量),
+ * SVG foreignObject 渲染上下文的字形度量有亚像素差异,末字会折行并与下行叠印。
+ * 截图前按 HTML 量好的几何写死绝对定位并留宽度余量,截完恢复。
+ * 余量按对齐方向分配(left 补右侧/center 补两侧/right 补左侧),文字视觉位置不变。
+ */
+function freezeBodyLayout(node: HTMLElement): () => void {
+  const stretch = node.querySelector<HTMLElement>("[data-export-stretch]");
+  const mid = node.querySelector<HTMLElement>("[data-export-mid]");
+  if (stretch == null || mid == null) return () => {};
+  const bak = [stretch.getAttribute("style"), mid.getAttribute("style")];
+  const s = stretch.getBoundingClientRect();
+  const m = mid.getBoundingClientRect();
+  const align = getComputedStyle(mid.firstElementChild ?? mid).textAlign;
+  const pad = 24;
+  const dx = align === "center" ? -pad / 2 : align === "right" ? -pad : 0;
+  stretch.setAttribute("style", `position:relative;height:${s.height}px;`);
+  mid.setAttribute(
+    "style",
+    `position:absolute;left:${m.left - s.left + dx}px;top:${m.top - s.top}px;width:${m.width + pad}px;`,
+  );
+  return () => {
+    for (const [el, css] of [
+      [stretch, bak[0]],
+      [mid, bak[1]],
+    ] as const) {
+      if (css != null) el.setAttribute("style", css);
+      else el.removeAttribute("style");
+    }
+  };
+}
+
+/** unicode-range 声明 → 数值区间(支持 U+4E00-4FFF 与通配 U+4E?? 两种形态) */
+function parseRanges(decl: string): [number, number][] {
+  const ranges: [number, number][] = [];
+  for (const part of decl.split(",")) {
+    const m = part.trim().match(/^U\+([0-9a-f?]+)(?:-([0-9a-f]+))?$/i);
+    if (m == null) continue;
+    const lo = parseInt(m[1]!.replace(/\?/g, "0"), 16);
+    const hi = m[2] != null ? parseInt(m[2], 16) : parseInt(m[1]!.replace(/\?/g, "f"), 16);
+    ranges.push([lo, hi]);
+  }
+  return ranges;
+}
+
+function toBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  // 分块防 spread 参数上限
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(bin);
+}
+
+/**
+ * 按需字体嵌入:截图库默认 fetch css 里全部 @font-face(97 个分包全量下载),
+ * 这里只嵌"导出文本实际命中 unicode-range 的分包"(一首诗约命中几个)。
+ */
+async function buildFontEmbedCSS(text: string, cssPath: string): Promise<string> {
+  const cssUrl = new URL(cssPath, location.origin).href;
+  const css = await (await fetch(cssUrl)).text();
+  const cps = new Set([...text].map((ch) => ch.codePointAt(0)!));
+  const inRanges = (cp: number, ranges: [number, number][]) => ranges.some(([lo, hi]) => cp >= lo && cp <= hi);
+
+  const faces = css.match(/@font-face\s*\{[^}]*\}/g) ?? [];
+  const out: string[] = [];
+  for (const face of faces) {
+    // 值域吃到 ; 或 } 为止:lxgw 的 css 末条声明不带分号,要求分号会全军覆没
+    const rangeDecl = face.match(/unicode-range:\s*([^;}]+)/)?.[1];
+    const srcUrl = face.match(/url\((?:'([^']+)'|"([^"]+)"|([^'"][^)]*))\)/);
+    const url = srcUrl?.[1] ?? srcUrl?.[2] ?? srcUrl?.[3];
+    if (rangeDecl == null || url == null) continue;
+
+    const ranges = parseRanges(rangeDecl);
+    if (![...cps].some((cp) => inRanges(cp, ranges))) continue;
+
+    const buf = await (await fetch(new URL(url, cssUrl)).catch(() => null))?.arrayBuffer();
+    if (buf == null) continue;
+    // 剔除 font-display:swap — SVG-as-image 渲染不等 webfont 解码,swap 会直接画回退字体
+    out.push(
+      face
+        .replace(/url\([^)]*\)/, `url(data:font/woff2;base64,${toBase64(buf)})`)
+        .replace(/font-display:[^;}]+[;}]?/g, ""),
+    );
+  }
+  return out.join("\n");
+}
+
+/**
+ * 导出多页 PNG:多页时命名 `名-1.png/-2.png…`,单页保持 `名.png`。
+ * 优先 Web Share(移动端 Safari 分享面板可「存储图像」进相册,a[download] 只进文件 App);
+ * 手势过期/不支持则回退逐张下载。返回 shared(已弹分享) 或 downloaded(已下载)。
+ */
+export async function exportCards(
+  nodes: HTMLElement[],
+  baseName: string,
+  fontCssPath?: string,
+): Promise<"shared" | "downloaded"> {
+  // 字体分包全部就绪再截,避免缺字回退系统字体;全页文本合并,嵌入命中分包
+  const fontCss = fontCssPath != null ? await buildFontEmbedCSS(nodes.map((n) => n.innerText).join(""), fontCssPath) : "";
+  // web 字体主题命中 0 个分包 = 字体加载链路断了(CDN 不可达等):
+  // 静默回退会让导出整卡错字体,不如报错让用户重试
+  if (fontCssPath != null && fontCss === "") throw new Error("字体加载失败,请检查网络后重试");
+
+  // 并行截各页:总耗时 ≈ 最慢一页 —— navigator.share 有数秒的用户手势窗口,
+  // 串行多页截图必然超时,分享会静默变下载
+  const blobs = await Promise.all(
+    nodes.map(async (node) => {
+      const unfreeze = freezeBodyLayout(node);
+      // 2x 起步保文字锐度,超 2MB 逐档降 scale 重截(PNG 体积约随像素面积走)
+      let blob: Blob | null = null;
+      try {
+        for (const scale of SCALES) {
+          blob = await domToBlob(node, {
+            width: CARD_W,
+            height: node.offsetHeight,
+            scale,
+            // 系统字体主题无 cssText,font:false 连文档字体扫描一并跳过
+            font: fontCss === "" ? false : { cssText: fontCss },
+          });
+          if (blob.size <= MAX_BYTES) break;
+        }
+      } finally {
+        unfreeze();
+      }
+      return blob!;
+    }),
+  );
+
+  const files = blobs.map((blob, i) => {
+    const suffix = nodes.length > 1 ? `-${i + 1}` : "";
+    return new File([blob], `${baseName}${suffix}.png`, { type: "image/png" });
+  });
+
+  if (navigator.canShare?.({ files }) === true) {
+    try {
+      await navigator.share({ files });
+      return "shared";
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return "shared"; // 用户取消
+    }
+  }
+
+  // 回退下载:连点会被浏览器拦截,间隔放行
+  for (const file of files) {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    await new Promise((r) => setTimeout(r, 300));
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  }
+  return "downloaded";
+}

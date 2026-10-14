@@ -1,0 +1,31 @@
+{
+  "name": "dogdog.work",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "build": "bun build.ts",
+    "deploy": "bun scripts/deploy.ts",
+    "start": "NODE_ENV=production bun src/index.ts",
+    "sync-fonts": "bun scripts/sync-fonts.ts"
+  },
+  "dependencies": {
+    "bun-plugin-tailwind": "^0.1.2",
+    "lucide-react": "^1.55.0",
+    "modern-screenshot": "^4.7.0",
+    "react": "^19",
+    "react-dom": "^19",
+    "tailwindcss": "^4.1.17",
+    "wouter": "^3.10.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@fontsource/ma-shan-zheng": "^5.3.1",
+    "@fontsource/zhi-mang-xing": "^5.3.0",
+    "@types/bun": "latest",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "lxgw-wenkai-webfont": "^1.7.0"
+  }
+}
