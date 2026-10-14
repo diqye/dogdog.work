@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { CARD_W, CARD_H, textToBodyHtml, stripHtml, parseCardText, type CardContent } from "../card/types";
-import { THEMES, themeById, themeBackgroundStyle } from "../card/themes";
+import { THEMES, themeById, themeBackgroundStyle, accentDots } from "../card/themes";
 import { Poem, type Align, type FontSize, type SigPos } from "../card/templates/Poem";
 import { exportCards } from "../card/export";
 import { encodeCardState, decodeCardState, type CardState } from "../card/share";
@@ -235,7 +235,7 @@ export function CardPage() {
             <span className="text-ink-faint">·</span>
             <span>{infoTheme.font.name}</span>
             <span className="flex items-center gap-1 ml-0.5">
-              {[...new Set([infoTheme.ink, ...infoTheme.accents])].map((c) => (
+              {accentDots(infoTheme).map((c) => (
                 <i
                   key={c}
                   className="w-2.5 h-2.5 rounded-full border border-line/60"
@@ -307,7 +307,7 @@ export function CardPage() {
           </div>
         </div>
 
-        <SelectionToolbar cardRef={cardRef} accents={theme.accents} />
+        <SelectionToolbar cardRef={cardRef} accents={accentDots(theme)} />
 
         {/* 控制列:导出/分享 → 次级控件 → 主题网格(自适应占满剩余宽,主题 auto-fill 排列) */}
         <div className="w-full lg:flex-1 min-w-0 flex flex-col gap-6">

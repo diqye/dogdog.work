@@ -1,6 +1,6 @@
 /**
  * 主题预设:背景 + 墨色 + 字体 + 强调色 一体化(选择粒度坍缩为一个维度,像滤镜)。
- * 同一字体可在多个主题复用;选区着色气泡的色点由主题 accents 提供。
+ * 同一字体可在多个主题复用。
  */
 
 import { fontById, type CardFont } from "./fonts";
@@ -24,8 +24,6 @@ export interface CardTheme {
   inkSoft: string;
   /** 绑定字体(web 或系统栈) */
   font: CardFont;
-  /** 选区气泡色点(深底配亮色,浅底配沉色) */
-  accents: string[];
 }
 
 import type { CSSProperties } from "react";
@@ -53,7 +51,6 @@ export const THEMES: CardTheme[] = [
     ink: "#f2f4f8",
     inkSoft: "#8b95a5",
     font: fontById("lxgw-wenkai"),
-    accents: ["#e05a4e", "#d9a441", "#6fb3a8", "#7fa3c8"],
   },
   {
     id: "yuebai",
@@ -64,7 +61,6 @@ export const THEMES: CardTheme[] = [
     ink: "#262626",
     inkSoft: "#9a968f",
     font: fontById("lxgw-wenkai"),
-    accents: ["#c0392b", "#2c5f8a", "#6b7a3a", "#8a5f9e"],
   },
   {
     id: "nuansha",
@@ -75,7 +71,6 @@ export const THEMES: CardTheme[] = [
     ink: "#3d3327",
     inkSoft: "#a08d72",
     font: fontById("lxgw-wenkai"),
-    accents: ["#a0522d", "#2f6690", "#7d4a6b", "#3d3327"],
   },
   {
     id: "daiqing",
@@ -86,7 +81,6 @@ export const THEMES: CardTheme[] = [
     ink: "#eef5f2",
     inkSoft: "#7fa39d",
     font: fontById("ma-shan-zheng"),
-    accents: ["#e8b04b", "#e07a5f", "#83c5be", "#c8d8f0"],
   },
   {
     id: "muzi",
@@ -97,7 +91,6 @@ export const THEMES: CardTheme[] = [
     ink: "#f3eefb",
     inkSoft: "#9d8fb5",
     font: fontById("lxgw-wenkai"),
-    accents: ["#e6a4c4", "#d9b26f", "#9fc5e8", "#b39ddb"],
   },
   {
     id: "zhusha",
@@ -108,7 +101,6 @@ export const THEMES: CardTheme[] = [
     ink: "#f5e6c8",
     inkSoft: "#c99a7a",
     font: fontById("ma-shan-zheng"),
-    accents: ["#e8b04b", "#f2a65a", "#e77e6d"],
   },
   {
     id: "zhusha-wenkai",
@@ -119,7 +111,6 @@ export const THEMES: CardTheme[] = [
     ink: "#f5e6c8",
     inkSoft: "#c99a7a",
     font: fontById("lxgw-wenkai"),
-    accents: ["#e8b04b", "#f2a65a", "#e77e6d"],
   },
   {
     id: "zhusha-xing",
@@ -130,7 +121,6 @@ export const THEMES: CardTheme[] = [
     ink: "#f5e6c8",
     inkSoft: "#c99a7a",
     font: fontById("zhi-mang-xing"),
-    accents: ["#e8b04b", "#f2a65a", "#e77e6d"],
   },
   {
     id: "zhuqing",
@@ -141,7 +131,6 @@ export const THEMES: CardTheme[] = [
     ink: "#e8f0e9",
     inkSoft: "#8fa89a",
     font: fontById("lxgw-wenkai"),
-    accents: ["#d9c48f", "#a8c5a0", "#7fa8c9", "#d97b66"],
   },
   {
     id: "yanzhi",
@@ -152,7 +141,6 @@ export const THEMES: CardTheme[] = [
     ink: "#6b2737",
     inkSoft: "#a9707c",
     font: fontById("lxgw-wenkai"),
-    accents: ["#b3426b", "#8a5f9e", "#5f7a8a", "#6b2737"],
   },
   {
     id: "cangqing",
@@ -163,7 +151,6 @@ export const THEMES: CardTheme[] = [
     ink: "#e6ecf7",
     inkSoft: "#7c89a6",
     font: fontById("lxgw-wenkai"),
-    accents: ["#d9a441", "#7fb3d0", "#c98fa8", "#9fc5a8"],
   },
   {
     id: "luoxia",
@@ -174,7 +161,6 @@ export const THEMES: CardTheme[] = [
     ink: "#53302a",
     inkSoft: "#9c6a5d",
     font: fontById("lxgw-wenkai"),
-    accents: ["#8c3b3b", "#5f4a6b", "#3f5e5a", "#53302a"],
   },
   {
     id: "songyan",
@@ -185,7 +171,6 @@ export const THEMES: CardTheme[] = [
     ink: "#2f3a33",
     inkSoft: "#7f8a82",
     font: fontById("lxgw-wenkai"),
-    accents: ["#4a6b5a", "#6b5f4a", "#4a5a6b", "#2f3a33"],
   },
   {
     id: "xuanzhi",
@@ -196,7 +181,6 @@ export const THEMES: CardTheme[] = [
     ink: "#3b352c",
     inkSoft: "#a39a8a",
     font: fontById("lxgw-wenkai"),
-    accents: ["#8a5f3b", "#4a5a6b", "#6b4a5a", "#3b352c"],
   },
   // ---------- 图片主题:三层渲染(图 cover → 蒙层 → 文字),统一浅字,蒙层按图色调压暗 ----------
   // bodyTop 主题正文顶对齐:蒙层三段式(顶部深保白字/中部透出图/底部中深保落款)
@@ -211,7 +195,6 @@ export const THEMES: CardTheme[] = [
     ink: "#f0f3fa",
     inkSoft: "#adb8cc",
     font: fontById("lxgw-wenkai"),
-    accents: ["#e8d28a", "#9fc5e8", "#c9a8e8", "#f0f3fa"],
   },
   {
     id: "xueyuan",
@@ -225,7 +208,6 @@ export const THEMES: CardTheme[] = [
     ink: "#f6f7f9",
     inkSoft: "#c5cbd3",
     font: fontById("ma-shan-zheng"),
-    accents: ["#e8d28a", "#a8cbe8", "#e8a8a0", "#f6f7f9"],
   },
   {
     id: "muhai",
@@ -239,7 +221,6 @@ export const THEMES: CardTheme[] = [
     ink: "#f5f3ee",
     inkSoft: "#c3c3bd",
     font: fontById("long-cang"),
-    accents: ["#e8c98a", "#a8c8e0", "#d8a8c0", "#f5f3ee"],
   },
   {
     id: "chenguang",
@@ -253,7 +234,6 @@ export const THEMES: CardTheme[] = [
     ink: "#fbf5ec",
     inkSoft: "#d3c4b3",
     font: fontById("lxgw-wenkai"),
-    accents: ["#f0d8a0", "#f0b8a8", "#d8e0c0", "#fbf5ec"],
   },
   {
     id: "jieshi",
@@ -266,7 +246,6 @@ export const THEMES: CardTheme[] = [
     ink: "#f4f1e8",
     inkSoft: "#b5b2a6",
     font: fontById("zhi-mang-xing"),
-    accents: ["#e8b04b", "#e6a4c4", "#9fc5e8", "#f4f1e8"],
   },
   {
     id: "wulin",
@@ -280,7 +259,6 @@ export const THEMES: CardTheme[] = [
     ink: "#f2f5f3",
     inkSoft: "#becac4",
     font: fontById("lxgw-wenkai"),
-    accents: ["#d8e8b0", "#a8d0c8", "#e0d0a0", "#f2f5f3"],
   },
   {
     id: "yunshan",
@@ -294,9 +272,21 @@ export const THEMES: CardTheme[] = [
     ink: "#f2f4f8",
     inkSoft: "#c0c8d4",
     font: fontById("long-cang"),
-    accents: ["#a8cbe8", "#e8d28a", "#c8d8e8", "#f2f4f8"],
   },
 ];
+
+/** 选区着色的固定色组:饱和中明度,深浅底卡面都有基本对比 —— 不跟主题走(位置恒定,所见即所得) */
+const FIXED_DOTS = ["#e05a4e", "#d9a441", "#4a90d9", "#6b8f3a", "#9a5fb5", "#e07a9e"];
+
+/** 选区气泡色点:首位墨色(取主题 ink,改回正文色用)+ 固定色组 */
+export function accentDots(t: CardTheme): string[] {
+  return [t.ink, ...FIXED_DOTS];
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
 
 export function themeById(id: string): CardTheme {
   return THEMES.find((t) => t.id === id) ?? THEMES[0]!;

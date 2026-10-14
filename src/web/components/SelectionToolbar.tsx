@@ -73,33 +73,40 @@ export function SelectionToolbar({
 
   return createPortal(
     <div
-      style={{ left: pos.x, top: pos.y - 44 }}
-      className="fixed z-50 -translate-x-1/2 flex items-center gap-1 bg-ink text-canvas rounded-full shadow-md px-2 py-1 select-none"
+      style={{
+        left: Math.min(Math.max(pos.x, 130), window.innerWidth - 130),
+        top: pos.y - 88,
+      }}
+      className="fixed z-50 -translate-x-1/2 flex flex-col items-center gap-1 bg-ink text-canvas rounded-2xl shadow-md px-2 py-1.5 select-none"
     >
-      {accents.map((c) => (
+      {/* 两行:上色点下格式钮 —— 单行在窄屏选区靠边时会溢出屏幕 */}
+      <div className="flex items-center gap-1">
+        {accents.map((c) => (
+          <button
+            key={c}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => exec("foreColor", c)}
+            className="w-6 h-6 rounded-full border border-white/40 hover:scale-110 transition-transform"
+            style={{ background: c }}
+          />
+        ))}
+      </div>
+      <div className="flex items-center gap-1 border-t border-white/15 pt-1">
+        <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("bold")} className={iconBtn(states.bold)} title="加粗">
+          <Bold size={13} />
+        </button>
+        <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("italic")} className={iconBtn(states.italic)} title="斜体">
+          <Italic size={13} />
+        </button>
         <button
-          key={c}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => exec("foreColor", c)}
-          className="w-6 h-6 rounded-full border border-white/40 hover:scale-110 transition-transform"
-          style={{ background: c }}
-        />
-      ))}
-      <div className="w-px h-4 bg-white/25 mx-1" />
-      <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("bold")} className={iconBtn(states.bold)} title="加粗">
-        <Bold size={13} />
-      </button>
-      <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("italic")} className={iconBtn(states.italic)} title="斜体">
-        <Italic size={13} />
-      </button>
-      <button
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => exec("strikeThrough")}
-        className={iconBtn(states.strike)}
-        title="删除线"
-      >
-        <Strikethrough size={13} />
-      </button>
+          onClick={() => exec("strikeThrough")}
+          className={iconBtn(states.strike)}
+          title="删除线"
+        >
+          <Strikethrough size={13} />
+        </button>
+      </div>
     </div>,
     document.body,
   );
