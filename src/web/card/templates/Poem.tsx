@@ -9,7 +9,7 @@
 import { useLayoutEffect, useRef, type CSSProperties, type ClipboardEvent, type KeyboardEvent } from "react";
 import type { CardContent } from "../types";
 import { CARD_H } from "../types";
-import { themeById } from "../themes";
+import { themeById, themeBackgroundStyle } from "../themes";
 
 export type { FontSize, Align, SigPos } from "../types";
 import type { FontSize, Align, SigPos } from "../types";
@@ -58,11 +58,13 @@ export function Poem({ content, themeId, fontSize, align, sigPos, showTitle = tr
     minHeight: CARD_H,
     padding: 96,
     boxSizing: "border-box",
-    background: theme.background,
+    ...themeBackgroundStyle(theme),
     color: theme.ink,
     fontFamily: `${theme.font.family}, 'PingFang SC', serif`,
     display: "flex",
     flexDirection: "column",
+    // 图片主题文字加柔和暗晕(text-shadow 可继承):蒙层薄的亮区兑底保可读
+    ...(theme.image != null ? { textShadow: "0 2px 16px rgba(0,0,0,0.45)" } : {}),
   };
 
   /** 标题单行:Enter 换行禁用 */
@@ -116,7 +118,17 @@ export function Poem({ content, themeId, fontSize, align, sigPos, showTitle = tr
       )}
 
       {/* data-export-*:导出时布局冻结用(SVG 渲染上下文 intrinsic 宽度不可靠,见 export.ts) */}
-      <div data-export-stretch="" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: JUSTIFY[align] }}>
+      <div
+        data-export-stretch=""
+        style={{
+          flex: 1,
+          display: "flex",
+          // 留白直排主题:正文贴上部留白区,与标题留一点呼吸间距
+          alignItems: theme.bodyTop === true ? "flex-start" : "center",
+          justifyContent: JUSTIFY[align],
+          ...(theme.bodyTop === true ? { paddingTop: 72 } : {}),
+        }}
+      >
         <div data-export-mid="" style={{ display: "flex", flexDirection: "column" }}>
           <div
             ref={bodyTextRef}

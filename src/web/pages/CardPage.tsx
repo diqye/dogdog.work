@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { CARD_W, CARD_H, textToBodyHtml, stripHtml, parseCardText, type CardContent } from "../card/types";
-import { THEMES, themeById } from "../card/themes";
+import { THEMES, themeById, themeBackgroundStyle } from "../card/themes";
 import { Poem, type Align, type FontSize, type SigPos } from "../card/templates/Poem";
 import { exportCards } from "../card/export";
 import { encodeCardState, decodeCardState, type CardState } from "../card/share";
@@ -414,7 +414,7 @@ export function CardPage() {
             >
               <div
                 className="aspect-4/3 flex flex-col items-center justify-center px-1.5"
-                style={{ background: t.background, color: t.ink }}
+                style={{ ...themeBackgroundStyle(t), color: t.ink }}
               >
                 <span className="text-md leading-none tracking-widest" style={{ fontFamily: t.font.family }}>
                   {t.sample}

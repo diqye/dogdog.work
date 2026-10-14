@@ -15,6 +15,7 @@
         "zod": "^4.4.3",
       },
       "devDependencies": {
+        "@fontsource/long-cang": "^5.3.0",
         "@fontsource/ma-shan-zheng": "^5.3.1",
         "@fontsource/zhi-mang-xing": "^5.3.0",
         "@types/bun": "latest",
@@ -25,6 +26,8 @@
     },
   },
   "packages": {
+    "@fontsource/long-cang": ["@fontsource/long-cang@5.3.0", "https://registry.npmmirror.com/@fontsource/long-cang/-/long-cang-5.3.0.tgz", {}, "sha512-lCcBJb+LWZpYCVtGvQRiZPy5/EaGPuYLycpJXUIOz28EYGGqhTVWBRqY6ucaW8l1F8gvfjutY1PoAPUrFiP0wg=="],
+
     "@fontsource/ma-shan-zheng": ["@fontsource/ma-shan-zheng@5.3.1", "https://registry.npmmirror.com/@fontsource/ma-shan-zheng/-/ma-shan-zheng-5.3.1.tgz", {}, "sha512-cGGn7Yje2RSduXVxEk+rCfNZyD/T/7FMGj03LNPiK8TRL9Sing0tq1zJF3n+W29szPqgb2RNs5oIvmm+ikeI+Q=="],
 
     "@fontsource/zhi-mang-xing": ["@fontsource/zhi-mang-xing@5.3.0", "https://registry.npmmirror.com/@fontsource/zhi-mang-xing/-/zhi-mang-xing-5.3.0.tgz", {}, "sha512-V21yCCm5o2PHdXF2P9KKh7uiqL8QFFuII4DRQkpG24tfyDzJPchXKsxkcvKM43xEPvQKdbhHCBbXEFjcm/TUCQ=="],

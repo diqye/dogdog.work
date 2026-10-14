@@ -42,6 +42,12 @@ export const FONTS: CardFont[] = [
     family: `"Zhi Mang Xing"`,
     cssPath: "/static/fonts/zhi-mang-xing/400.css",
   },
+  {
+    id: "long-cang",
+    name: "龙藏行书",
+    family: `"Long Cang"`,
+    cssPath: "/static/fonts/long-cang/400.css",
+  },
 ];
 
 export function fontById(id: string): CardFont {

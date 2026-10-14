@@ -13,6 +13,7 @@ const PACKAGES: Record<string, { pkg: string; css: string }> = {
   "lxgw-wenkai": { pkg: "lxgw-wenkai-webfont", css: "lxgwwenkai-regular.css" },
   "ma-shan-zheng": { pkg: "@fontsource/ma-shan-zheng", css: "400.css" },
   "zhi-mang-xing": { pkg: "@fontsource/zhi-mang-xing", css: "400.css" },
+  "long-cang": { pkg: "@fontsource/long-cang", css: "400.css" },
 };
 
 for (const [id, { pkg, css }] of Object.entries(PACKAGES)) {
