@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { CARD_W, CARD_H, textToBodyHtml, stripHtml, parseCardText, FONT_SIZES, ALIGNS, SIG_POSITIONS, type CardContent } from "../card/types";
 import { THEMES, themeById, themeBackgroundStyle, accentDots } from "../card/themes";
+import { FONTS, fontById } from "../card/fonts";
 import { Poem, type Align, type FontSize, type SigPos } from "../card/templates/Poem";
 import { exportCards } from "../card/export";
 import { encodeCardState, decodeCardState, type CardState } from "../card/share";
@@ -91,6 +92,8 @@ export function CardPage() {
   const [sigPos, setSigPos] = useState<SigPos>(INITIAL?.sigPos ?? SAVED.sigPos ?? "br");
   const [dateOn, setDateOn] = useState(INITIAL?.dateOn ?? SAVED.dateOn ?? true);
   const [themeId, setThemeId] = useState(INITIAL?.themeId ?? SAVED.themeId ?? THEMES[0]!.id);
+  // 字体临时覆盖:跟主题走(主题一点即清),用户手改后生效到导出;不持久化不进分享链
+  const [fontOverrideId, setFontOverrideId] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState<FontSize>(INITIAL?.fontSize ?? SAVED.fontSize ?? "m");
   const [align, setAlign] = useState<Align>(INITIAL?.align ?? SAVED.align ?? "left");
   const [exporting, setExporting] = useState(false);
@@ -100,6 +103,8 @@ export function CardPage() {
   const [hoverThemeId, setHoverThemeId] = useState<string | null>(null);
 
   const theme = themeById(themeId);
+  // 生效字体:覆盖值优先,否则主题绑定的
+  const font = fontOverrideId != null ? fontById(fontOverrideId) : theme.font;
   // 左上角同步展示:hover 中的主题,否则当前主题(名称 · 字体 · 配色点)
   const infoTheme = themeById(hoverThemeId ?? themeId);
 
@@ -156,10 +161,10 @@ export function CardPage() {
   }, [notice]);
 
 
-  // 主题字体 css 按需挂载(系统字体零请求,切换时替换/摘除)
+  // 生效字体 css 按需挂载(系统字体零请求,切换时替换/摘除)
   useEffect(() => {
     let link = document.head.querySelector<HTMLLinkElement>("link[data-card-font]");
-    if (theme.font.cssPath == null) {
+    if (font.cssPath == null) {
       link?.remove();
       return;
     }
@@ -169,8 +174,8 @@ export function CardPage() {
       link.dataset.cardFont = "";
       document.head.append(link);
     }
-    link.href = theme.font.cssPath;
-  }, [theme]);
+    link.href = font.cssPath;
+  }, [font]);
 
   // 主题示例卡需全部 web 字体(唯一字体集合,unicode-range 分包浏览器按需拉取)
   useEffect(() => {
@@ -207,7 +212,7 @@ export function CardPage() {
     setExporting(true);
     setError(null);
     try {
-      const result = await exportCards(nodes, stripHtml(title).trim() || "诗卡", theme.font.cssPath);
+      const result = await exportCards(nodes, stripHtml(title).trim() || "诗卡", font.cssPath);
       // 分享未弹出(手势过期/环境不支持)转为下载时告知用户去向
       if (result === "downloaded") setNotice("已转为逐张下载");
     } catch (err) {
@@ -303,6 +308,7 @@ export function CardPage() {
               <Poem
                 content={content}
                 themeId={themeId}
+                fontId={fontOverrideId ?? undefined}
                 fontSize={fontSize}
                 align={align}
                 sigPos={sigPos}
@@ -346,6 +352,20 @@ export function CardPage() {
             >
               <Trash2 size={15} />
             </button>
+
+            {/* 字体下拉:默认跟主题,点主题即反选回主题字体;仅临时覆盖不持久化 */}
+            <select
+              value={font.id}
+              onChange={(e) => setFontOverrideId(e.target.value)}
+              title="字体默认随主题,可临时单独更换"
+              className="px-2 py-1 rounded-lg border border-line bg-surface hover:bg-canvas"
+            >
+              {FONTS.map((f) => (
+                <option key={f.id} value={f.id} style={{ fontFamily: f.family }}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -449,7 +469,10 @@ export function CardPage() {
               key={t.id}
               onMouseEnter={() => setHoverThemeId(t.id)}
               onMouseLeave={() => setHoverThemeId(null)}
-              onClick={() => setThemeId(t.id)}
+              onClick={() => {
+                setThemeId(t.id);
+                setFontOverrideId(null);
+              }}
               className={`flex flex-col rounded-xl overflow-hidden transition-transform hover:scale-[1.03] text-left ${
                 themeId === t.id ? "ring-2 ring-primary ring-offset-2 ring-offset-canvas" : "border border-line shadow-sm"
               }`}
@@ -479,7 +502,7 @@ export function CardPage() {
         style={{ position: "fixed", left: -9999, top: 0, width: CARD_W, pointerEvents: "none" }}
       >
         {pages.map((_, i) => (
-          <Poem key={i} content={contentAt(i)} showTitle={i === 0} themeId={themeId} fontSize={fontSize} align={align} sigPos={sigPos} />
+          <Poem key={i} content={contentAt(i)} showTitle={i === 0} themeId={themeId} fontId={fontOverrideId ?? undefined} fontSize={fontSize} align={align} sigPos={sigPos} />
         ))}
       </div>
     </div>

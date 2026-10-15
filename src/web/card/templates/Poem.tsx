@@ -10,6 +10,7 @@ import { useLayoutEffect, useRef, type CSSProperties, type ClipboardEvent, type 
 import type { CardContent } from "../types";
 import { CARD_H } from "../types";
 import { themeById, themeBackgroundStyle } from "../themes";
+import { fontById } from "../fonts";
 
 export type { FontSize, Align, SigPos } from "../types";
 import type { FontSize, Align, SigPos } from "../types";
@@ -23,6 +24,8 @@ export interface PoemProps {
   fontSize: FontSize;
   align: Align;
   sigPos: SigPos;
+  /** 覆盖主题绑定字体(嫌主题字体不好看时手动换);不传 = 跟随主题。不进分享链/不持久化 */
+  fontId?: string;
   /** 多页模式下标题只进首页;默认 true(单卡全量渲染) */
   showTitle?: boolean;
   /** 传入即开启就地编辑,变更以 html 回调 */
@@ -43,8 +46,9 @@ function pastePlain(e: ClipboardEvent) {
   document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
 }
 
-export function Poem({ content, themeId, fontSize, align, sigPos, showTitle = true, onEdit }: PoemProps) {
+export function Poem({ content, themeId, fontId, fontSize, align, sigPos, showTitle = true, onEdit }: PoemProps) {
   const theme = themeById(themeId);
+  const font = fontId != null ? fontById(fontId) : theme.font;
   const bodyFs = BODY_FONT_SIZE[fontSize];
   const editable = onEdit != null;
 
@@ -60,7 +64,7 @@ export function Poem({ content, themeId, fontSize, align, sigPos, showTitle = tr
     boxSizing: "border-box",
     ...themeBackgroundStyle(theme),
     color: theme.ink,
-    fontFamily: `${theme.font.family}, 'PingFang SC', serif`,
+    fontFamily: `${font.family}, 'PingFang SC', serif`,
     display: "flex",
     flexDirection: "column",
     // 带蒙层的图片主题浅字配柔和暗晕(text-shadow 可继承):蒙层薄的亮区兑底保可读;
