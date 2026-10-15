@@ -182,7 +182,7 @@ export const THEMES: CardTheme[] = [
     inkSoft: "#a39a8a",
     font: fontById("lxgw-wenkai"),
   },
-  // ---------- 图片主题:三层渲染(图 cover → 蒙层 → 文字),统一浅字,蒙层按图色调压暗 ----------
+  // ---------- 图片主题:三层渲染(图 cover → 蒙层(可选) → 文字)。带 scrim 的照片主题浅字、蒙层按图色调压暗;无 scrim 的浅底纹理主题(牛皮纸)深墨 ----------
   // bodyTop 主题正文顶对齐:蒙层三段式(顶部深保白字/中部透出图/底部中深保落款)
   {
     id: "xingye",
@@ -272,6 +272,17 @@ export const THEMES: CardTheme[] = [
     ink: "#f2f4f8",
     inkSoft: "#c0c8d4",
     font: fontById("long-cang"),
+  },
+  {
+    id: "niupizhi",
+    name: "牛皮纸",
+    desc: "旧信纸 · 手记",
+    sample: "见字如面",
+    background: "#b29b77",
+    image: "/static/images/theme-kraft.jpg",
+    ink: "#33261a",
+    inkSoft: "#4a3a26",
+    font: fontById("ma-shan-zheng"),
   },
 ];
 

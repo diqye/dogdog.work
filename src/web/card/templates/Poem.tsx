@@ -63,8 +63,9 @@ export function Poem({ content, themeId, fontSize, align, sigPos, showTitle = tr
     fontFamily: `${theme.font.family}, 'PingFang SC', serif`,
     display: "flex",
     flexDirection: "column",
-    // 图片主题文字加柔和暗晕(text-shadow 可继承):蒙层薄的亮区兑底保可读
-    ...(theme.image != null ? { textShadow: "0 2px 16px rgba(0,0,0,0.45)" } : {}),
+    // 带蒙层的图片主题浅字配柔和暗晕(text-shadow 可继承):蒙层薄的亮区兑底保可读;
+    // 无蒙层的浅底纹理主题(牛皮纸)是深墨字,加深晕反而发脏
+    ...(theme.scrim != null ? { textShadow: "0 2px 16px rgba(0,0,0,0.45)" } : {}),
   };
 
   /** 标题单行:Enter 换行禁用 */
