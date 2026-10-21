@@ -19,6 +19,8 @@ const result = await Bun.build({
   plugins: [tailwind],
   minify: true,
   target: "bun",
+  // 前端动态 import(shiki 语言/主题)切独立 chunk 按需拉取,否则全量进首屏(1.2MB 事故)
+  splitting: true,
   sourcemap: "none",
   // 资产引用改绝对路径(/chunk-*.js):SPA 深层路由下相对引用会被解析进路由
   // 路径,回退到 SPA fallback 返 HTML 报 MIME 错误
