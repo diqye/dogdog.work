@@ -19,7 +19,7 @@ const result = await Bun.build({
   plugins: [tailwind],
   minify: true,
   target: "bun",
-  // 前端动态 import(shiki 语言/主题)切独立 chunk 按需拉取,否则全量进首屏(1.2MB 事故)
+  // 前端动态 import(shiki core/语言/主题)切独立 chunk 按需拉取
   splitting: true,
   sourcemap: "none",
   // 资产引用改绝对路径(/chunk-*.js):SPA 深层路由下相对引用会被解析进路由
@@ -34,6 +34,13 @@ if (!result.success) {
   console.error(result.logs);
   process.exit(1);
 }
+
+// splitting 后服务端入口也会引用 chunk,publicPath 会把运行时 import 污染成
+// 绝对路径 "/chunk-*.js"——Bun 按文件系统解析 → 启动即崩(容器内 cwd 即产物目录,
+// 相对引用可正常加载)。只改 dist/index.js;chunk 间与 html 里的引用服务浏览器,保持绝对
+const indexPath = path.join(outdir, "index.js");
+await Bun.write(indexPath, (await Bun.file(indexPath).text()).replaceAll('"/chunk-', '"./chunk-'));
+
 for (const output of result.outputs) {
   console.log(` ${path.relative(cwd, output.path)}  ${(output.size / 1024).toFixed(1)} KB`);
 }
