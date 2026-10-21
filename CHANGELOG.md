@@ -2,6 +2,29 @@
 
 ## [Unreleased]
 
+## v0.3.0 (2026-10-21)
+
+### New Features
+
+- 代码卡 - 贴代码出高亮图:JetBrains Mono 连字 + 8 语言 shiki 着色,所见即所得
+- 新首页 - 诗卡/代码卡双入口分流
+- 牛皮纸主题 - 旧信纸纹理配深墨,见字如面
+- 字体下拉 - 嫌主题字体不好看可单独换,点主题即恢复跟随
+
+### Added
+
+- /code 代码卡页:textarea 透明前景叠 shiki 高亮层实现所见即所得(光标即最终像素);语言 TypeScript/TSX/JavaScript/Rust/Haskell/Zig/SQL/Bash,主题 4 款(One Dark/GitHub Dark/GitHub Light/Vitesse Light,主题块即真实着色预览);连字/自动换行/字号控件;文件名可编辑,语言名胶囊钉右上角;卡宽随最长行自适应(480-1920 超出裁剪),预览整屏缩放不出滚动条;分享链与导出 PNG(Web Share → 下载回退)
+- 首页:诗卡/代码卡两张入口卡;诗卡迁 /poem,代码卡 /code(旧 /?c= 分享链不再兼容)
+- 字体:JetBrains Mono(等宽+连字)走 npmmirror 分包;sync-fonts 登记表改为多 css 结构
+- 牛皮纸主题(旧信纸 · 手记):纹理图背景 + 深棕墨字;文字暗晕改为只随带蒙层的照片主题(浅底深字加晕发脏)
+- 字体下拉(页切换条「删除」后):任选字体临时覆盖主题绑定的字体,点主题反选回主题字体;不进设置持久化与分享链
+
+### Changed
+
+- 导出管线抽为 lib 共用(诗卡/代码卡):字体嵌入支持多 css 源(等宽+中文回退),截图宽度随节点自身;codec/useFitScale/html 同步抽公共层
+- build 开 code splitting:shiki core/引擎/语言/主题全部按需 chunk,首屏体积不变
+- 主题精简:朱砂只留马善政楷一版(字体差异改由字体下拉实现,删文楷/行书变体),删除与黛青雷同的竹青
+
 ## v0.2.0 (2026-10-14)
 
 ### New Features
