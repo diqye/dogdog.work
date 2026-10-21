@@ -3,10 +3,10 @@
  * iOS Safari 的字体嵌入时序)。PNG 无损渐变(JPEG 压缩平滑渐变会出色带);
  * 单页超 2MB 自动降 scale 重截(2 → 1.5 → 1)。
  * 截图源是离屏设计尺寸渲染层(无 transform/编辑态),字体嵌入一次全页共用。
+ * 诗卡/代码卡共用:宽度随节点自身,字体可嵌多个 css(等宽+中文回退)。
  */
 
 import { domToBlob } from "modern-screenshot";
-import { CARD_W } from "./types";
 
 /** 单页体积上限:抖音上传足够,超限降 scale 换体积 */
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -70,15 +70,24 @@ function toBase64(buf: ArrayBuffer): string {
 /**
  * 按需字体嵌入:截图库默认 fetch css 里全部 @font-face(97 个分包全量下载),
  * 这里只嵌"导出文本实际命中 unicode-range 的分包"(一首诗约命中几个)。
+ * 多个 css(代码卡:等宽英文+中文回退)逐一扫描,命中分包全量合并嵌入。
  */
-async function buildFontEmbedCSS(text: string, cssPath: string): Promise<string> {
+async function buildFontEmbedCSS(text: string, cssPaths: string[]): Promise<string> {
+  const chunks: string[] = [];
+  for (const cssPath of cssPaths) {
+    chunks.push(await buildFontEmbedCSSFrom(cssPath, text));
+  }
+  return chunks.join("\n");
+}
+
+async function buildFontEmbedCSSFrom(cssPath: string, text: string): Promise<string> {
   const cssUrl = new URL(cssPath, location.origin).href;
   const css = await (await fetch(cssUrl)).text();
   const cps = new Set([...text].map((ch) => ch.codePointAt(0)!));
   const inRanges = (cp: number, ranges: [number, number][]) => ranges.some(([lo, hi]) => cp >= lo && cp <= hi);
 
   const faces = css.match(/@font-face\s*\{[^}]*\}/g) ?? [];
-  const out: string[] = [];
+  const chunks: string[] = [];
   for (const face of faces) {
     // 值域吃到 ; 或 } 为止:lxgw 的 css 末条声明不带分号,要求分号会全军覆没
     const rangeDecl = face.match(/unicode-range:\s*([^;}]+)/)?.[1];
@@ -92,13 +101,13 @@ async function buildFontEmbedCSS(text: string, cssPath: string): Promise<string>
     const buf = await (await fetch(new URL(url, cssUrl)).catch(() => null))?.arrayBuffer();
     if (buf == null) continue;
     // 剔除 font-display:swap — SVG-as-image 渲染不等 webfont 解码,swap 会直接画回退字体
-    out.push(
+    chunks.push(
       face
         .replace(/url\([^)]*\)/, `url(data:font/woff2;base64,${toBase64(buf)})`)
         .replace(/font-display:[^;}]+[;}]?/g, ""),
     );
   }
-  return out.join("\n");
+  return chunks.join("\n");
 }
 
 /**
@@ -109,13 +118,13 @@ async function buildFontEmbedCSS(text: string, cssPath: string): Promise<string>
 export async function exportCards(
   nodes: HTMLElement[],
   baseName: string,
-  fontCssPath?: string,
+  fontCssPaths: string[] = [],
 ): Promise<"shared" | "downloaded"> {
   // 字体分包全部就绪再截,避免缺字回退系统字体;全页文本合并,嵌入命中分包
-  const fontCss = fontCssPath != null ? await buildFontEmbedCSS(nodes.map((n) => n.innerText).join(""), fontCssPath) : "";
-  // web 字体主题命中 0 个分包 = 字体加载链路断了(CDN 不可达等):
+  const fontCss = await buildFontEmbedCSS(nodes.map((n) => n.innerText).join(""), fontCssPaths);
+  // web 字体命中 0 个分包 = 字体加载链路断了(CDN 不可达等):
   // 静默回退会让导出整卡错字体,不如报错让用户重试
-  if (fontCssPath != null && fontCss === "") throw new Error("字体加载失败,请检查网络后重试");
+  if (fontCssPaths.length > 0 && fontCss === "") throw new Error("字体加载失败,请检查网络后重试");
 
   // 并行截各页:总耗时 ≈ 最慢一页 —— navigator.share 有数秒的用户手势窗口,
   // 串行多页截图必然超时,分享会静默变下载
@@ -127,7 +136,6 @@ export async function exportCards(
       try {
         for (const scale of SCALES) {
           blob = await domToBlob(node, {
-            width: CARD_W,
             height: node.offsetHeight,
             scale,
             // 系统字体主题无 cssText,font:false 连文档字体扫描一并跳过

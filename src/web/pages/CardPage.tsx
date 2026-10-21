@@ -4,12 +4,13 @@
  * 分享把全量参数编码进 URL(?c=),打开链接即还原卡片。
  */
 
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CARD_W, CARD_H, textToBodyHtml, stripHtml, parseCardText, FONT_SIZES, ALIGNS, SIG_POSITIONS, type CardContent } from "../card/types";
 import { THEMES, themeById, themeBackgroundStyle, accentDots } from "../card/themes";
 import { FONTS, fontById } from "../card/fonts";
 import { Poem, type Align, type FontSize, type SigPos } from "../card/templates/Poem";
-import { exportCards } from "../card/export";
+import { exportCards } from "../lib/export";
+import { useFitScale } from "../lib/useFitScale";
 import { encodeCardState, decodeCardState, type CardState } from "../card/share";
 import { SelectionToolbar } from "../components/SelectionToolbar";
 import { AlignCenter, AlignLeft, AlignRight, ChevronLeft, ChevronRight, ClipboardPaste, Download, Link2, Plus, Trash2 } from "lucide-react";
@@ -65,20 +66,6 @@ const SAVED: SavedSettings = (() => {
 })();
 
 /** 预览缩放:跟随容器宽,卡片保持设计尺寸 */
-function useFitScale(ref: RefObject<HTMLDivElement | null>) {
-  const [scale, setScale] = useState(0.45);
-  useEffect(() => {
-    const el = ref.current;
-    if (el == null) return;
-    const update = () => setScale(el.clientWidth / CARD_W);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [ref]);
-  return scale;
-}
-
 const segBtn = (active: boolean) =>
   `flex-1 py-1 flex items-center justify-center ${active ? "bg-primary text-on-primary" : "bg-surface text-ink-soft"}`;
 
@@ -112,7 +99,7 @@ export function CardPage() {
   const cardRef = useRef<HTMLDivElement>(null);
   // 离屏渲染层:全部页按设计尺寸真实渲染(字体分包按需加载也在此发生),导出从这里截图
   const exportWrapRef = useRef<HTMLDivElement>(null);
-  const scale = useFitScale(fitRef);
+  const scale = useFitScale(fitRef, CARD_W);
 
   const last = pages.length - 1;
 
@@ -212,7 +199,7 @@ export function CardPage() {
     setExporting(true);
     setError(null);
     try {
-      const result = await exportCards(nodes, stripHtml(title).trim() || "诗卡", font.cssPath);
+      const result = await exportCards(nodes, stripHtml(title).trim() || "诗卡", font.cssPath == null ? [] : [font.cssPath]);
       // 分享未弹出(手势过期/环境不支持)转为下载时告知用户去向
       if (result === "downloaded") setNotice("已转为逐张下载");
     } catch (err) {
@@ -288,6 +275,9 @@ export function CardPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <a href="/" className="text-sm text-ink-faint hover:text-ink">
+            首页
+          </a>
           <a href="/changelog" target="_blank" rel="noreferrer" className="text-sm text-ink-faint hover:text-ink">
             更新日志
           </a>

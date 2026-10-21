@@ -100,3 +100,22 @@
   content: attr(data-ph);
   opacity: 0.35;
 }
+
+/* ---- 代码卡:shiki 输出的 pre 归零,排版全部由 .code-body 继承 ---- */
+.code-body pre,
+.code-body code {
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  white-space: inherit;
+  tab-size: inherit;
+  font-feature-settings: inherit;
+  font-variant-ligatures: inherit;
+  overflow-wrap: inherit;
+}
+
+/* 代码卡就地编辑:透明前景 textarea,选中态用中性色(明暗主题通用) */
+.code-input::selection {
+  background-color: rgb(128 128 128 / 0.45);
+  color: transparent;
+}

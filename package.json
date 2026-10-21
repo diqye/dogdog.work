@@ -16,11 +16,13 @@
     "modern-screenshot": "^4.7.0",
     "react": "^19",
     "react-dom": "^19",
+    "shiki": "^4.5.0",
     "tailwindcss": "^4.1.17",
     "wouter": "^3.10.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/long-cang": "^5.3.0",
     "@fontsource/ma-shan-zheng": "^5.3.1",
     "@fontsource/zhi-mang-xing": "^5.3.0",

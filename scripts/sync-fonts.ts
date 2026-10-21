@@ -9,14 +9,17 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
-const PACKAGES: Record<string, { pkg: string; css: string }> = {
-  "lxgw-wenkai": { pkg: "lxgw-wenkai-webfont", css: "lxgwwenkai-regular.css" },
-  "ma-shan-zheng": { pkg: "@fontsource/ma-shan-zheng", css: "400.css" },
-  "zhi-mang-xing": { pkg: "@fontsource/zhi-mang-xing", css: "400.css" },
-  "long-cang": { pkg: "@fontsource/long-cang", css: "400.css" },
+const PACKAGES: Record<string, { pkg: string; css: string }[]> = {
+  "lxgw-wenkai": [{ pkg: "lxgw-wenkai-webfont", css: "lxgwwenkai-regular.css" }],
+  "ma-shan-zheng": [{ pkg: "@fontsource/ma-shan-zheng", css: "400.css" }],
+  "zhi-mang-xing": [{ pkg: "@fontsource/zhi-mang-xing", css: "400.css" }],
+  "long-cang": [{ pkg: "@fontsource/long-cang", css: "400.css" }],
+  // 代码卡专用:等宽+连字(calt),斜体走浏览器合成,不加载 italic 分包
+  "jetbrains-mono": [{ pkg: "@fontsource/jetbrains-mono", css: "400.css" }],
 };
 
-for (const [id, { pkg, css }] of Object.entries(PACKAGES)) {
+for (const [id, entries] of Object.entries(PACKAGES)) {
+  for (const { pkg, css } of entries) {
   const srcDir = `node_modules/${pkg}`;
   const version = JSON.parse(await readFile(`${srcDir}/package.json`, "utf8")).version as string;
   let text = await readFile(`${srcDir}/${css}`, "utf8");
@@ -32,4 +35,5 @@ for (const [id, { pkg, css }] of Object.entries(PACKAGES)) {
   await mkdir(`static/fonts/${id}`, { recursive: true });
   await writeFile(`static/fonts/${id}/${css}`, text);
   console.log(`static/fonts/${id}/${css} <- ${pkg}@${version}(${count} 个 woff2 指向 CDN)`);
+  }
 }

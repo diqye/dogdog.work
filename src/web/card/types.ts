@@ -39,9 +39,8 @@ export function textToBodyHtml(text: string): string {
     .join("");
 }
 
-export function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
+export { escapeHtml } from "../lib/html";
+import { escapeHtml } from "../lib/html";
 
 /** 整段文本的结构约定:首行=标题,末行 `- 署名`=落款,中间=正文 */
 export type ParsedCardText = { title: string; body: string; signature: string };
