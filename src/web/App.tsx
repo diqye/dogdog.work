@@ -3,14 +3,18 @@
  */
 
 import { Route, Switch } from "wouter";
+import { HomePage } from "./pages/HomePage";
 import { CardPage } from "./pages/CardPage";
+import { CodePage } from "./pages/CodePage";
 import { ChangelogPage } from "./pages/ChangelogPage";
 import { HelloPage } from "./pages/HelloPage";
 
 export function App() {
   return (
     <Switch>
-      <Route path="/" component={CardPage} />
+      <Route path="/" component={HomePage} />
+      <Route path="/poem" component={CardPage} />
+      <Route path="/code" component={CodePage} />
       <Route path="/changelog" component={ChangelogPage} />
       <Route path="/hello" component={HelloPage} />
       <Route>
