@@ -18,6 +18,7 @@ export const CODE_LANGS: CodeLang[] = [
   { id: "zig", name: "Zig", load: () => import("@shikijs/langs/zig") },
   { id: "sql", name: "SQL", load: () => import("@shikijs/langs/sql") },
   { id: "bash", name: "Bash", load: () => import("@shikijs/langs/bash") },
+  { id: "markdown", name: "Markdown", load: () => import("@shikijs/langs/markdown") },
 ];
 
 export function codeLangById(id: string): CodeLang {
