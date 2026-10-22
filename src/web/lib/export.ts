@@ -1,16 +1,15 @@
 /**
  * 导出管线:modern-screenshot(SVG foreignObject 路线,相对 html-to-image 修复了
  * iOS Safari 的字体嵌入时序)。PNG 无损渐变(JPEG 压缩平滑渐变会出色带);
- * 单页超 2MB 自动降 scale 重截(2 → 1.5 → 1)。
+ * 固定 2x 出图(设计宽 1080 → 2448px,文字锐度与体积的平衡点)。
  * 截图源是离屏设计尺寸渲染层(无 transform/编辑态),字体嵌入一次全页共用。
  * 诗卡/代码卡共用:宽度随节点自身,字体可嵌多个 css(等宽+中文回退)。
  */
 
 import { domToBlob } from "modern-screenshot";
 
-/** 单页体积上限:抖音上传足够,超限降 scale 换体积 */
-const MAX_BYTES = 2 * 1024 * 1024;
-const SCALES = [2, 1.5, 1] as const;
+/** 出图倍率:设计尺寸 2x —— 文字锐度与体积的平衡点,不再按体积降档 */
+const EXPORT_SCALE = 2;
 
 /**
  * 正文居中层布局冻结:flex + shrink-to-fit 的正文容器宽度恰等于内容宽(零余量),
@@ -131,22 +130,16 @@ export async function exportCards(
   const blobs = await Promise.all(
     nodes.map(async (node) => {
       const unfreeze = freezeBodyLayout(node);
-      // 2x 起步保文字锐度,超 2MB 逐档降 scale 重截(PNG 体积约随像素面积走)
-      let blob: Blob | null = null;
       try {
-        for (const scale of SCALES) {
-          blob = await domToBlob(node, {
-            height: node.offsetHeight,
-            scale,
-            // 系统字体主题无 cssText,font:false 连文档字体扫描一并跳过
-            font: fontCss === "" ? false : { cssText: fontCss },
-          });
-          if (blob.size <= MAX_BYTES) break;
-        }
+        return await domToBlob(node, {
+          height: node.offsetHeight,
+          scale: EXPORT_SCALE,
+          // 系统字体主题无 cssText,font:false 连文档字体扫描一并跳过
+          font: fontCss === "" ? false : { cssText: fontCss },
+        });
       } finally {
         unfreeze();
       }
-      return blob!;
     }),
   );
 

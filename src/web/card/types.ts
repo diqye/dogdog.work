@@ -6,6 +6,8 @@
 /** 卡片逻辑尺寸:宽固定,高为最小高(内容多则撑高);预览 scale 适配,导出按实际尺寸 */
 export const CARD_W = 1080;
 export const CARD_H = 1440;
+/** 导出垫层 padding(卡外四周):预览缩放/导出尺寸计算都带它 */
+export const CARD_PAD = 72;
 
 export interface CardContent {
   /** 单行富文本(html),空串 = 不渲染 */

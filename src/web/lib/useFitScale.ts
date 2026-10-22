@@ -3,14 +3,14 @@
  * 传入 designH 时同时受视口高度约束(卡整屏可见,页面不出滚动条)。
  */
 
-import { useEffect, useState, type RefObject } from "react";
+import { useLayoutEffect, useState, type RefObject } from "react";
 
 /** 视口高度预留:header + 工具条 + 页边距 */
 const VIEWPORT_H_RESERVE = 300;
 
 export function useFitScale(ref: RefObject<HTMLDivElement | null>, designW: number, designH?: number) {
   const [scale, setScale] = useState(0.45);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = ref.current;
     if (el == null) return;
     const update = () => {

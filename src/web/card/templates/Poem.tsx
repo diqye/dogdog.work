@@ -1,6 +1,7 @@
 /**
  * 现代诗横排模板:标题左上 / 正文垂直居中 / 落款右下。
  * 卡片为竖构图(3:4),文字横排(现代诗出版惯例)。
+ * 根节点是主题色垫层(卡外四周 padding):圆角卡浮于其上,导出 PNG 四角不透明(同代码卡配方)。
  * 就地编辑(onEdit 传入时):标题/正文 contentEditable 富文本,
  * React 不托管编辑区 DOM(ref + layoutEffect 单向同步),用户输入只回写 state,
  * state 与 DOM 恒等 → 光标不跳。
@@ -8,7 +9,7 @@
 
 import { useLayoutEffect, useRef, type CSSProperties, type ClipboardEvent, type KeyboardEvent } from "react";
 import type { CardContent } from "../types";
-import { CARD_H } from "../types";
+import { CARD_H, CARD_W, CARD_PAD } from "../types";
 import { themeById, themeBackgroundStyle } from "../themes";
 import { fontById } from "../fonts";
 
@@ -17,6 +18,11 @@ import type { FontSize, Align, SigPos } from "../types";
 
 const BODY_FONT_SIZE: Record<FontSize, number> = { s: 40, m: 48, l: 56 };
 const JUSTIFY: Record<Align, string> = { left: "flex-start", center: "center", right: "flex-end" };
+
+/** 导出垫层(卡外四周)统一配色:中明度冷银灰(月白装裱),凸显圆角卡 */
+const PAD_BG = "#d7dade";
+/** 卡面投影(双墨:近影勾边+远影浮起):向下延伸(dy+blur)不得超垫层 padding 72,否则截图切边 */
+const CARD_SHADOW = "0 6px 18px rgba(15, 23, 42, 0.12), 0 24px 48px rgba(15, 23, 42, 0.22)";
 
 export interface PoemProps {
   content: CardContent;
@@ -58,7 +64,7 @@ export function Poem({ content, themeId, fontId, fontSize, align, sigPos, showTi
   useSyncHtml(bodyTextRef, content.body);
 
   const base: CSSProperties = {
-    width: "100%",
+    width: CARD_W,
     minHeight: CARD_H,
     padding: 96,
     boxSizing: "border-box",
@@ -93,73 +99,76 @@ export function Poem({ content, themeId, fontId, fontSize, align, sigPos, showTi
   );
 
   return (
-    <div style={base}>
-      {showTitle && (editable || content.title !== "") && (
-        <h1
-          ref={titleRef}
-          contentEditable={editable}
-          suppressContentEditableWarning
-          spellCheck={false}
-          data-ph="点击输入标题"
-          className={editable ? "card-editable" : undefined}
-          onInput={editable ? (e) => onEdit({ title: e.currentTarget.innerHTML }) : undefined}
-          onKeyDown={editable ? titleKeyDown : undefined}
-          onPaste={editable ? pastePlain : undefined}
-          style={{
-            margin: 0,
-            fontSize: bodyFs * 1.35,
-            fontWeight: 400,
-            letterSpacing: "0.25em",
-            lineHeight: 1.4,
-            // 显式继承主题色:index.css 的 h1{color:var(--color-ink)} 会盖掉容器 color,暗色主题下不可见
-            color: theme.ink,
-            alignSelf: JUSTIFY[align],
-          }}
-        />
-      )}
-
-      {showSig && sigPos === "under-title" && (
-        <div style={{ ...sigStyle, alignSelf: JUSTIFY[align], textAlign: align, marginBlockStart: 36 }}>{sigLines}</div>
-      )}
-
-      {/* data-export-*:导出时布局冻结用(SVG 渲染上下文 intrinsic 宽度不可靠,见 export.ts) */}
-      <div
-        data-export-stretch=""
-        style={{
-          flex: 1,
-          display: "flex",
-          // 留白直排主题:正文贴上部留白区,与标题留一点呼吸间距
-          alignItems: theme.bodyTop === true ? "flex-start" : "center",
-          justifyContent: JUSTIFY[align],
-          ...(theme.bodyTop === true ? { paddingTop: 72 } : {}),
-        }}
-      >
-        <div data-export-mid="" style={{ display: "flex", flexDirection: "column" }}>
-          <div
-            ref={bodyTextRef}
+    // 垫层:fit-content 恒等于卡宽+padding(卡面显式宽垫高 min-content,父容器可用宽压不进来)
+    <div style={{ backgroundColor: PAD_BG, padding: CARD_PAD, width: "fit-content" }}>
+      <div style={{ ...base, borderRadius: 48, boxShadow: CARD_SHADOW }}>
+        {showTitle && (editable || content.title !== "") && (
+          <h1
+            ref={titleRef}
             contentEditable={editable}
             suppressContentEditableWarning
             spellCheck={false}
-            data-ph="点击输入正文"
+            data-ph="点击输入标题"
             className={editable ? "card-editable" : undefined}
-            onInput={editable ? (e) => onEdit({ body: e.currentTarget.innerHTML }) : undefined}
+            onInput={editable ? (e) => onEdit({ title: e.currentTarget.innerHTML }) : undefined}
+            onKeyDown={editable ? titleKeyDown : undefined}
             onPaste={editable ? pastePlain : undefined}
-            style={{ fontSize: bodyFs, lineHeight: 2, letterSpacing: "0.05em", textAlign: align, minWidth: "40%" }}
+            style={{
+              margin: 0,
+              fontSize: bodyFs * 1.35,
+              fontWeight: 400,
+              letterSpacing: "0.25em",
+              lineHeight: 1.4,
+              // 显式继承主题色:index.css 的 h1{color:var(--color-ink)} 会盖掉容器 color,暗色主题下不可见
+              color: theme.ink,
+              alignSelf: JUSTIFY[align],
+            }}
           />
-        </div>
-      </div>
+        )}
 
-      {showSig && sigPos === "br" && (
-        <footer
+        {showSig && sigPos === "under-title" && (
+          <div style={{ ...sigStyle, alignSelf: JUSTIFY[align], textAlign: align, marginBlockStart: 36 }}>{sigLines}</div>
+        )}
+
+        {/* data-export-*:导出时布局冻结用(SVG 渲染上下文 intrinsic 宽度不可靠,见 export.ts) */}
+        <div
+          data-export-stretch=""
           style={{
-            ...sigStyle,
-            alignSelf: "flex-end",
-            textAlign: "right",
+            flex: 1,
+            display: "flex",
+            // 留白直排主题:正文贴上部留白区,与标题留一点呼吸间距
+            alignItems: theme.bodyTop === true ? "flex-start" : "center",
+            justifyContent: JUSTIFY[align],
+            ...(theme.bodyTop === true ? { paddingTop: 72 } : {}),
           }}
         >
-          {sigLines}
-        </footer>
-      )}
+          <div data-export-mid="" style={{ display: "flex", flexDirection: "column" }}>
+            <div
+              ref={bodyTextRef}
+              contentEditable={editable}
+              suppressContentEditableWarning
+              spellCheck={false}
+              data-ph="点击输入正文"
+              className={editable ? "card-editable" : undefined}
+              onInput={editable ? (e) => onEdit({ body: e.currentTarget.innerHTML }) : undefined}
+              onPaste={editable ? pastePlain : undefined}
+              style={{ fontSize: bodyFs, lineHeight: 2, letterSpacing: "0.05em", textAlign: align, minWidth: "40%" }}
+            />
+          </div>
+        </div>
+
+        {showSig && sigPos === "br" && (
+          <footer
+            style={{
+              ...sigStyle,
+              alignSelf: "flex-end",
+              textAlign: "right",
+            }}
+          >
+            {sigLines}
+          </footer>
+        )}
+      </div>
     </div>
   );
 }
