@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## v0.4.0 (2026-10-22)
+
+### New Features
+
+- 代码卡 Markdown 语言 - 贴 README/笔记也能出卡
+
+### Added
+
+- /code 语言登记表加 Markdown:与现有 8 语言同机制(懒加载分包,下拉/角标/分享链同源驱动)
+
+### Fixed
+
+- 部署启动崩溃:splitting 后 publicPath 把服务端入口的 chunk 引用污染成绝对路径,Bun 按文件系统解析不到;构建后处理改为相对路径(容器 cwd 即产物目录,相对引用可正常加载)
+
 ## v0.3.0 (2026-10-21)
 
 ### New Features
