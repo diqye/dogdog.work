@@ -1,10 +1,9 @@
 /**
  * 代码卡工具页:上卡片(居中,大小随内容自适应只缩不放;textarea 覆盖高亮层,所见即所得)
- * + 下工具条(全部控件)。分享把全量参数编码进 URL(?c=),打开链接即还原;
- * 设置持久化 localStorage(内容不存)。
+ * + 下工具条(全部控件)。分享把全量参数编码进 URL(?c=),打开链接即还原(不做 localStorage 持久化,每次打开回默认)。
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CODE_CARD_W, CodeCard, plainPreHtml } from "../code/CodeCard";
 import { CODE_LANGS } from "../code/languages";
 import { CODE_THEMES } from "../code/themes";
@@ -12,7 +11,7 @@ import { highlightCode } from "../code/highlight";
 import { CODE_FONT_SIZES, encodeCodeState, decodeCodeState, type CodeState, type CodeFontSize } from "../code/share";
 import { exportCards } from "../lib/export";
 import { useFitScale } from "../lib/useFitScale";
-import { Download, Link2 } from "lucide-react";
+import { ArrowLeft, Download, Link2 } from "lucide-react";
 
 const DEFAULT_CODE = `type Dog = { name: string; age: number };
 
@@ -25,32 +24,6 @@ function bark(d: Dog): string {
 
 const INITIAL = decodeCodeState(new URLSearchParams(location.search).get("c") ?? "");
 
-/* 设置持久化(localStorage):只存设置,代码内容/文件名不存;url param > localStorage > 默认 */
-const LS_KEY = "code-card-settings";
-
-interface SavedSettings {
-  lang?: string;
-  themeId?: string;
-  fontSize?: CodeFontSize;
-  ligatures?: boolean;
-  wrap?: boolean;
-}
-
-const SAVED: SavedSettings = (() => {
-  try {
-    const s = JSON.parse(localStorage.getItem(LS_KEY) ?? "{}") as Record<string, unknown>;
-    return {
-      lang: CODE_LANGS.some((l) => l.id === s.lang) ? (s.lang as string) : undefined,
-      themeId: CODE_THEMES.some((t) => t.id === s.themeId) ? (s.themeId as string) : undefined,
-      fontSize: CODE_FONT_SIZES.includes(s.fontSize as CodeFontSize) ? (s.fontSize as CodeFontSize) : undefined,
-      ligatures: typeof s.ligatures === "boolean" ? (s.ligatures as boolean) : undefined,
-      wrap: typeof s.wrap === "boolean" ? (s.wrap as boolean) : undefined,
-    };
-  } catch {
-    return {};
-  }
-})();
-
 /** 代码卡字体 css:等宽主体 + 中文回退;挂一次,重复挂由 data 标记挡住 */
 const FONT_CSS_PATHS = ["/static/fonts/jetbrains-mono/400.css", "/static/fonts/lxgw-wenkai/lxgwwenkai-regular.css"];
 
@@ -62,12 +35,12 @@ const segBtn = (active: boolean) =>
 
 export function CodePage() {
   const [code, setCode] = useState(INITIAL?.code ?? DEFAULT_CODE);
-  const [lang, setLang] = useState(INITIAL?.lang ?? SAVED.lang ?? "typescript");
-  const [themeId, setThemeId] = useState(INITIAL?.themeId ?? SAVED.themeId ?? CODE_THEMES[0]!.id);
+  const [lang, setLang] = useState(INITIAL?.lang ?? "typescript");
+  const [themeId, setThemeId] = useState(INITIAL?.themeId ?? CODE_THEMES[0]!.id);
   const [filename, setFilename] = useState(INITIAL?.filename ?? "");
-  const [fontSize, setFontSize] = useState<CodeFontSize>(INITIAL?.fontSize ?? SAVED.fontSize ?? "m");
-  const [ligatures, setLigatures] = useState(INITIAL?.ligatures ?? SAVED.ligatures ?? true);
-  const [wrap, setWrap] = useState(INITIAL?.wrap ?? SAVED.wrap ?? false);
+  const [fontSize, setFontSize] = useState<CodeFontSize>(INITIAL?.fontSize ?? "m");
+  const [ligatures, setLigatures] = useState(INITIAL?.ligatures ?? true);
+  const [wrap, setWrap] = useState(INITIAL?.wrap ?? false);
   const [html, setHtml] = useState(() => plainPreHtml(INITIAL?.code ?? DEFAULT_CODE));
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,35 +88,30 @@ export function CodePage() {
     }
   }, []);
 
-  // 设置写回 localStorage
-  useEffect(() => {
-    const s: SavedSettings = { lang, themeId, fontSize, ligatures, wrap };
-    localStorage.setItem(LS_KEY, JSON.stringify(s));
-  }, [lang, themeId, fontSize, ligatures, wrap]);
-
   useEffect(() => {
     if (error == null) return;
     const t = setTimeout(() => setError(null), 3000);
     return () => clearTimeout(t);
   }, [error]);
 
-  // 卡片实际尺寸(内容自适应):观察 CodeCard 根 —— 外层容器若钉死 width,
-  // 子元素溢出不改自身盒子,RO 永不触发(卡宽死锁在旧值的根源)
+  // 卡片实际尺寸(内容自适应):观察 CodeCard 垫层 —— 挂载即同步量(首帧绘制前,
+  // 否则占位盒先按猜测尺寸渲染再跳变 = 入页闪烁);后续(字体就绪重测宽/编辑)由 RO 接管
   const [cardH, setCardH] = useState(600);
   const [cardW, setCardW] = useState(CODE_CARD_W);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = cardRef.current?.firstElementChild;
     if (el == null) return;
-    const ro = new ResizeObserver(() => {
+    const measure = () => {
       setCardH((el as HTMLElement).offsetHeight);
       setCardW((el as HTMLElement).offsetWidth);
-    });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
   const scale = useFitScale(outerRef, cardW, cardH);
-  const isLight = CODE_THEMES.find((t) => t.id === themeId)?.bg === "#ffffff";
 
   async function onExport() {
     const node = exportRef.current?.firstElementChild;
@@ -179,11 +147,13 @@ export function CodePage() {
         </div>
       )}
       <header className="px-6 py-5 flex items-center justify-between">
-        <h1 className="text-h3 font-semibold leading-none">代码卡</h1>
         <div className="flex items-center gap-3">
-          <a href="/" className="text-sm text-ink-faint hover:text-ink">
-            首页
+          <a href="/" aria-label="回首页" className="text-ink-faint hover:text-ink">
+            <ArrowLeft size={20} />
           </a>
+          <h1 className="text-h3 font-semibold leading-none">代码卡</h1>
+        </div>
+        <div className="flex items-center gap-3">
           <a href="/changelog" target="_blank" rel="noreferrer" className="text-sm text-ink-faint hover:text-ink">
             更新日志
           </a>
@@ -194,7 +164,7 @@ export function CodePage() {
         {/* 上:卡片居中,大小随内容(容器装不下才缩,不放大)。sizer 居中关键:
             transform 不改布局尺寸,占位若用设计宽,卡宽>容器时 flex 居中失效溢出靠左 */}
         <div ref={outerRef} className="w-full flex justify-center">
-          <div style={{ width: cardW * scale, height: cardH * scale }}>
+          <div style={{ width: cardW * scale, height: cardH * scale, transition: "width 0.25s ease, height 0.25s ease" }}>
             {/* transform 容器不设宽:width 钉死会阻断 RO 察觉 CodeCard 根的真实宽度 */}
             <div ref={cardRef} style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}>
               <CodeCard

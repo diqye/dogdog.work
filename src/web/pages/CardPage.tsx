@@ -4,8 +4,8 @@
  * 分享把全量参数编码进 URL(?c=),打开链接即还原卡片。
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { CARD_W, CARD_H, textToBodyHtml, stripHtml, parseCardText, FONT_SIZES, ALIGNS, SIG_POSITIONS, type CardContent } from "../card/types";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { CARD_W, CARD_H, CARD_PAD, textToBodyHtml, stripHtml, parseCardText, FONT_SIZES, ALIGNS, SIG_POSITIONS, type CardContent } from "../card/types";
 import { THEMES, themeById, themeBackgroundStyle, accentDots } from "../card/themes";
 import { FONTS, fontById } from "../card/fonts";
 import { Poem, type Align, type FontSize, type SigPos } from "../card/templates/Poem";
@@ -13,7 +13,7 @@ import { exportCards } from "../lib/export";
 import { useFitScale } from "../lib/useFitScale";
 import { encodeCardState, decodeCardState, type CardState } from "../card/share";
 import { SelectionToolbar } from "../components/SelectionToolbar";
-import { AlignCenter, AlignLeft, AlignRight, ChevronLeft, ChevronRight, ClipboardPaste, Download, Link2, Plus, Trash2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, ChevronLeft, ChevronRight, ClipboardPaste, Download, Link2, Plus, Trash2 } from "lucide-react";
 
 const DEFAULT_TITLE = "哔";
 const DEFAULT_BODY = `我大喊你的名字
@@ -99,7 +99,8 @@ export function CardPage() {
   const cardRef = useRef<HTMLDivElement>(null);
   // 离屏渲染层:全部页按设计尺寸真实渲染(字体分包按需加载也在此发生),导出从这里截图
   const exportWrapRef = useRef<HTMLDivElement>(null);
-  const scale = useFitScale(fitRef, CARD_W);
+  // designW 含垫层(卡外 padding):整体缩进容器
+  const scale = useFitScale(fitRef, CARD_W + CARD_PAD * 2);
 
   const last = pages.length - 1;
 
@@ -116,12 +117,19 @@ export function CardPage() {
 
   const content = useMemo(() => contentAt(cur), [title, pages, cur, sigPos, sigOn, signature, dateOn]);
 
-  // 卡片实际高度(内容自适应):预览包裹层同步缩放后的高度
-  const [cardH, setCardH] = useState(CARD_H);
-  useEffect(() => {
-    const el = cardRef.current;
+  // 卡片实际尺寸(含垫层,内容自适应):观察 Poem 垫层;挂载即同步量(首帧绘制前,
+  // 否则占位盒先按猜测尺寸渲染再跳变 = 入页闪烁),后续内容撑高由 RO 接管
+  const [cardH, setCardH] = useState(CARD_H + CARD_PAD * 2);
+  const [cardW, setCardW] = useState(CARD_W + CARD_PAD * 2);
+  useLayoutEffect(() => {
+    const el = cardRef.current?.firstElementChild;
     if (el == null) return;
-    const ro = new ResizeObserver(() => setCardH(el.offsetHeight));
+    const measure = () => {
+      setCardH((el as HTMLElement).offsetHeight);
+      setCardW((el as HTMLElement).offsetWidth);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -257,7 +265,11 @@ export function CardPage() {
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-ink text-canvas text-sm shadow-md">{notice}</div>
       )}
       <header className="px-6 py-5 flex items-start justify-between">
-        <div className="flex flex-col gap-1.5">
+        <div className="flex items-start gap-3">
+          <a href="/" aria-label="回首页" className="text-ink-faint hover:text-ink mt-1">
+            <ArrowLeft size={20} />
+          </a>
+          <div className="flex flex-col gap-1.5">
           <h1 className="text-h3 font-semibold leading-none">诗卡</h1>
           <div className="flex items-center gap-2 text-xs text-ink-soft">
             <span>{infoTheme.name}</span>
@@ -273,44 +285,42 @@ export function CardPage() {
               ))}
             </span>
           </div>
+          </div>
         </div>
         <div className="flex items-center gap-3">
-          <a href="/" className="text-sm text-ink-faint hover:text-ink">
-            首页
-          </a>
           <a href="/changelog" target="_blank" rel="noreferrer" className="text-sm text-ink-faint hover:text-ink">
             更新日志
           </a>
-          <span className="text-sm text-ink-faint">dogdog.work</span>
+          <a href="/" className="text-sm text-ink-faint hover:text-ink">
+            dogdog.work
+          </a>
         </div>
       </header>
 
       {/* 大屏左右布局:左卡片主区 + 右控制列;移动单列流(卡片→导出→控件→主题) */}
       <main className="px-6 pb-16 flex flex-col lg:flex-row lg:items-start gap-8">
-        {/* 卡片:点击即编辑;选中文字浮出气泡;下方页切换条(左列固定宽) */}
+        {/* 卡片:点击即编辑;选中文字浮出气泡;下方页切换条(左列固定宽)。
+            占位盒钉缩放后几何(布局居中),transform 容器不设宽贴垫层 fit-content */}
         <div className="w-full lg:w-[560px] shrink-0 flex flex-col items-center gap-3">
-          <div className="w-full shadow-lg rounded-lg overflow-hidden">
-          <div ref={fitRef} style={{ height: cardH * scale }}>
-            <div
-              ref={cardRef}
-              style={{ width: CARD_W, transform: `scale(${scale})`, transformOrigin: "top left" }}
-            >
-              <Poem
-                content={content}
-                themeId={themeId}
-                fontId={fontOverrideId ?? undefined}
-                fontSize={fontSize}
-                align={align}
-                sigPos={sigPos}
-                showTitle={cur === 0}
-                onEdit={(patch) => {
-                  if (patch.title !== undefined) setTitle(patch.title);
-                  const html = patch.body;
-                  if (html !== undefined) setPages((ps) => ps.map((p, i) => (i === cur ? html : p)));
-                }}
-              />
+          <div ref={fitRef} className="w-full flex justify-center">
+            <div style={{ width: cardW * scale, height: cardH * scale, transition: "width 0.25s ease, height 0.25s ease" }}>
+              <div ref={cardRef} style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}>
+                <Poem
+                  content={content}
+                  themeId={themeId}
+                  fontId={fontOverrideId ?? undefined}
+                  fontSize={fontSize}
+                  align={align}
+                  sigPos={sigPos}
+                  showTitle={cur === 0}
+                  onEdit={(patch) => {
+                    if (patch.title !== undefined) setTitle(patch.title);
+                    const html = patch.body;
+                    if (html !== undefined) setPages((ps) => ps.map((p, i) => (i === cur ? html : p)));
+                  }}
+                />
+              </div>
             </div>
-          </div>
           </div>
 
           {/* 页切换条:◀ n/N ▶ + 新增(插当前页后)/删除(至少留一页) */}
@@ -486,11 +496,7 @@ export function CardPage() {
       </main>
 
       {/* 离屏导出层:全部页按设计尺寸渲染(无 scale/编辑态),导出逐张从此截取 */}
-      <div
-        aria-hidden
-        ref={exportWrapRef}
-        style={{ position: "fixed", left: -9999, top: 0, width: CARD_W, pointerEvents: "none" }}
-      >
+      <div aria-hidden ref={exportWrapRef} style={{ position: "fixed", left: -9999, top: 0, pointerEvents: "none" }}>
         {pages.map((_, i) => (
           <Poem key={i} content={contentAt(i)} showTitle={i === 0} themeId={themeId} fontId={fontOverrideId ?? undefined} fontSize={fontSize} align={align} sigPos={sigPos} />
         ))}

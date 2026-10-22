@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { ArrowLeft } from "lucide-react";
 
 interface VersionSection {
   title: string;
@@ -60,11 +60,11 @@ export function ChangelogPage() {
 
   return (
     <div className="min-h-screen bg-canvas">
-      <header className="px-6 py-5 flex items-center justify-between">
+      <header className="px-6 py-5 flex items-center gap-3">
+        <a href="/" aria-label="回首页" className="text-ink-faint hover:text-ink">
+          <ArrowLeft size={20} />
+        </a>
         <h1 className="text-h3 font-semibold">更新日志</h1>
-        <Link href="/" className="text-sm text-ink-faint hover:text-ink">
-          ← 诗卡
-        </Link>
       </header>
       <main className="px-6 pb-16 flex flex-col gap-4">
         {error != null && <p className="text-red-600 text-sm">{error}</p>}
