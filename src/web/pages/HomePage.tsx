@@ -24,14 +24,14 @@ export function HomePage() {
   const poemTheme = THEMES[0]!;
   return (
     <div className="min-h-dvh bg-canvas flex flex-col">
-      <header className="px-6 py-5 flex items-center justify-between">
+      <header className="px-4 sm:px-6 py-5 flex items-center justify-between">
         <span className="text-sm font-semibold text-ink">dogdog.work</span>
         <a href="/changelog" target="_blank" rel="noreferrer" className="text-sm text-ink-faint hover:text-ink">
           更新日志
         </a>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center gap-10 px-6 pb-20">
+      <main className="flex-1 flex flex-col items-center justify-center gap-8 sm:gap-10 px-4 sm:px-6 pb-16 sm:pb-20">
         <div className="text-center">
           <h1 className="text-display font-semibold tracking-tight">把文字变成图</h1>
           <p className="mt-3 text-ink-soft">诗与代码,都值得好好发出去</p>

@@ -60,13 +60,13 @@ export function ChangelogPage() {
 
   return (
     <div className="min-h-screen bg-canvas">
-      <header className="px-6 py-5 flex items-center gap-3">
+      <header className="px-4 sm:px-6 py-5 flex items-center gap-3">
         <a href="/" aria-label="回首页" className="text-ink-faint hover:text-ink">
           <ArrowLeft size={20} />
         </a>
         <h1 className="text-h3 font-semibold">更新日志</h1>
       </header>
-      <main className="px-6 pb-16 flex flex-col gap-4">
+      <main className="px-4 sm:px-6 pb-16 mx-auto w-full max-w-3xl flex flex-col gap-4">
         {error != null && <p className="text-red-600 text-sm">{error}</p>}
         {sections == null && error == null && <p className="text-sm text-ink-faint">加载中…</p>}
         {sections?.map((s) => (

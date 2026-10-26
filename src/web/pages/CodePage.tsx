@@ -146,7 +146,7 @@ export function CodePage() {
           {error}
         </div>
       )}
-      <header className="px-6 py-5 flex items-center justify-between">
+      <header className="px-4 sm:px-6 py-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <a href="/" aria-label="回首页" className="text-ink-faint hover:text-ink">
             <ArrowLeft size={20} />
@@ -160,7 +160,7 @@ export function CodePage() {
         </div>
       </header>
 
-      <main className="flex-1 px-6 pb-10 flex flex-col gap-5">
+      <main className="flex-1 px-4 sm:px-6 pb-10 flex flex-col gap-5">
         {/* 上:卡片居中,大小随内容(容器装不下才缩,不放大)。sizer 居中关键:
             transform 不改布局尺寸,占位若用设计宽,卡宽>容器时 flex 居中失效溢出靠左 */}
         <div ref={outerRef} className="w-full flex justify-center">
@@ -184,8 +184,31 @@ export function CodePage() {
           </div>
         </div>
 
-        {/* 下:工具条(全部控件) */}
+        {/* 下:工具条(全部控件)。操作/设置分组,窄屏各自成行,宽屏合流一行 */}
         <div className="w-full bg-surface border border-line rounded-2xl shadow-sm px-4 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-3">
+          {/* 操作:导出/分享 */}
+          <div className="flex gap-2">
+            <button
+              onClick={onShare}
+              className="py-2 px-4 rounded-xl border border-line bg-surface text-sm text-ink hover:bg-canvas flex items-center gap-2"
+            >
+              <Link2 size={15} />
+              {copied ? "已复制 ✓" : "分享链接"}
+            </button>
+            <button
+              onClick={onExport}
+              disabled={exporting}
+              className="py-2 px-5 rounded-xl bg-primary text-on-primary text-sm font-medium hover:bg-primary-hover disabled:opacity-60 flex items-center gap-2 shadow-sm"
+            >
+              <Download size={16} />
+              {exporting ? "导出中…" : "导出图片"}
+            </button>
+          </div>
+
+          <span className="hidden lg:block w-px h-6 bg-line" />
+
+          {/* 设置:语言/字号/连字/换行 */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
           <label className="flex items-center gap-2 text-sm text-ink-soft">
             语言
             <select
@@ -217,22 +240,8 @@ export function CodePage() {
             <input type="checkbox" checked={wrap} onChange={(e) => setWrap(e.target.checked)} className="accent-primary" />
             自动换行
           </label>
-          <span className="w-px h-6 bg-line" />
-          <button
-            onClick={onShare}
-            className="py-2 px-4 rounded-xl border border-line bg-surface text-sm text-ink hover:bg-canvas flex items-center gap-2"
-          >
-            <Link2 size={15} />
-            {copied ? "已复制 ✓" : "分享链接"}
-          </button>
-          <button
-            onClick={onExport}
-            disabled={exporting}
-            className="py-2 px-5 rounded-xl bg-primary text-on-primary text-sm font-medium hover:bg-primary-hover disabled:opacity-60 flex items-center gap-2 shadow-sm"
-          >
-            <Download size={16} />
-            {exporting ? "导出中…" : "导出图片"}
-          </button>
+          </div>
+
           {/* 主题块:代码卡同款外观(三点+左对齐代码)的缩略方块 */}
           <div className="w-full flex flex-wrap gap-x-3 gap-y-2 pt-1">
             {CODE_THEMES.map((t) => (
