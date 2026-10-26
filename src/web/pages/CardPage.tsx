@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { CARD_W, CARD_H, CARD_PAD, textToBodyHtml, stripHtml, parseCardText, FONT_SIZES, ALIGNS, SIG_POSITIONS, type CardContent } from "../card/types";
+import { CARD_W, CARD_H, CARD_PAD, textToBodyHtml, stripHtml, parseCardText, cardToText, FONT_SIZES, ALIGNS, SIG_POSITIONS, type CardContent } from "../card/types";
 import { THEMES, themeById, themeBackgroundStyle, accentDots } from "../card/themes";
 import { FONTS, fontById } from "../card/fonts";
 import { Poem, type Align, type FontSize, type SigPos } from "../card/templates/Poem";
@@ -13,7 +13,7 @@ import { exportCards } from "../lib/export";
 import { useFitScale } from "../lib/useFitScale";
 import { encodeCardState, decodeCardState, type CardState } from "../card/share";
 import { SelectionToolbar } from "../components/SelectionToolbar";
-import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, ChevronLeft, ChevronRight, ClipboardPaste, Download, Link2, Plus, Trash2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, ChevronLeft, ChevronRight, ClipboardPaste, Copy, Download, Link2, Plus, Trash2 } from "lucide-react";
 
 const DEFAULT_TITLE = "哔";
 const DEFAULT_BODY = `我大喊你的名字
@@ -87,6 +87,7 @@ export function CardPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedCard, setCopiedCard] = useState(false);
   const [hoverThemeId, setHoverThemeId] = useState<string | null>(null);
 
   const theme = themeById(themeId);
@@ -231,7 +232,23 @@ export function CardPage() {
     }
   }
 
-  /** 读剪贴板整段文本一键填卡(首行标题/末行落款),重置为单页长图,失败行内提示 */
+  /** 卡片内容整段复制(粘贴解析的逆):标题+正文+「- 署名」,回贴可完整还原 */
+  async function onCopyCard() {
+    const text = cardToText(title, pages, signature);
+    if (text === "") {
+      setError("没有可复制的内容");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedCard(true);
+      setTimeout(() => setCopiedCard(false), 2000);
+    } catch {
+      setError("复制失败,请检查浏览器授权");
+    }
+  }
+
+  /** 读剪贴板整段文本填卡:末行「- 署名」完整解析(标题/正文/署名),否则只覆盖正文 */
   async function onPasteParse() {
     setError(null);
     let text: string;
@@ -243,13 +260,15 @@ export function CardPage() {
     }
     const parsed = parseCardText(text);
     if (parsed == null) {
-      setError("格式不符:首行为标题,末行需为「- 署名」");
+      setError("剪贴板没有文本内容");
       return;
     }
-    setTitle(parsed.title);
+    if (parsed.title !== undefined) setTitle(parsed.title);
     setPages([parsed.body]);
-    setSignature(parsed.signature);
-    setSigOn(true);
+    if (parsed.signature !== undefined) {
+      setSignature(parsed.signature);
+      setSigOn(true);
+    }
     setCur(0);
   }
 
@@ -264,7 +283,7 @@ export function CardPage() {
       {notice != null && (
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-ink text-canvas text-sm shadow-md">{notice}</div>
       )}
-      <header className="px-6 py-5 flex items-start justify-between">
+      <header className="px-4 sm:px-6 py-5 flex items-start justify-between">
         <div className="flex items-start gap-3">
           <a href="/" aria-label="回首页" className="text-ink-faint hover:text-ink mt-1">
             <ArrowLeft size={20} />
@@ -291,14 +310,14 @@ export function CardPage() {
           <a href="/changelog" target="_blank" rel="noreferrer" className="text-sm text-ink-faint hover:text-ink">
             更新日志
           </a>
-          <a href="/" className="text-sm text-ink-faint hover:text-ink">
+          <a href="/" className="hidden sm:inline text-sm text-ink-faint hover:text-ink">
             dogdog.work
           </a>
         </div>
       </header>
 
       {/* 大屏左右布局:左卡片主区 + 右控制列;移动单列流(卡片→导出→控件→主题) */}
-      <main className="px-6 pb-16 flex flex-col lg:flex-row lg:items-start gap-8">
+      <main className="px-4 sm:px-6 pb-16 flex flex-col lg:flex-row lg:items-start gap-8">
         {/* 卡片:点击即编辑;选中文字浮出气泡;下方页切换条(左列固定宽)。
             占位盒钉缩放后几何(布局居中),transform 容器不设宽贴垫层 fit-content */}
         <div className="w-full lg:w-[560px] shrink-0 flex flex-col items-center gap-3">
@@ -324,7 +343,7 @@ export function CardPage() {
           </div>
 
           {/* 页切换条:◀ n/N ▶ + 新增(插当前页后)/删除(至少留一页) */}
-          <div className="flex items-center gap-3 text-sm text-ink-soft">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink-soft">
             <div className="flex items-center rounded-lg border border-line overflow-hidden bg-surface">
               <button onClick={() => setCur(cur - 1)} disabled={cur === 0} className="px-2 py-1 hover:bg-canvas disabled:opacity-40">
                 <ChevronLeft size={15} />
@@ -382,20 +401,27 @@ export function CardPage() {
               <Download size={18} />
               {exporting ? "导出中…" : pages.length > 1 ? `导出 ${pages.length} 张图` : "导出图片"}
             </button>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={onShare}
-                className="flex-1 py-2.5 rounded-xl border border-line bg-surface text-sm text-ink hover:bg-canvas flex items-center justify-center gap-2"
+                className="flex-1 min-w-28 py-2.5 rounded-xl border border-line bg-surface text-sm text-ink hover:bg-canvas flex items-center justify-center gap-2"
               >
                 <Link2 size={16} />
                 {copied ? "已复制 ✓" : "分享链接"}
               </button>
               <button
+                onClick={onCopyCard}
+                className="flex-1 min-w-28 py-2.5 rounded-xl border border-line bg-surface text-sm text-ink hover:bg-canvas flex items-center justify-center gap-2"
+              >
+                <Copy size={16} />
+                {copiedCard ? "已复制 ✓" : "复制内容"}
+              </button>
+              <button
                 onClick={onPasteParse}
-                className="flex-1 py-2.5 rounded-xl border border-line bg-surface text-sm text-ink hover:bg-canvas flex items-center justify-center gap-2"
+                className="flex-1 min-w-28 py-2.5 rounded-xl border border-line bg-surface text-sm text-ink hover:bg-canvas flex items-center justify-center gap-2"
               >
                 <ClipboardPaste size={16} />
-                粘贴解析
+                粘贴内容
               </button>
             </div>
           </div>
@@ -424,7 +450,7 @@ export function CardPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-center gap-6 text-sm text-ink-soft">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-ink-soft">
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input type="checkbox" checked={sigOn} onChange={(e) => setSigOn(e.target.checked)} className="accent-primary" />
               署名

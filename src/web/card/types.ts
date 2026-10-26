@@ -44,25 +44,60 @@ export function textToBodyHtml(text: string): string {
 export { escapeHtml } from "../lib/html";
 import { escapeHtml } from "../lib/html";
 
-/** 整段文本的结构约定:首行=标题,末行 `- 署名`=落款,中间=正文 */
-export type ParsedCardText = { title: string; body: string; signature: string };
+/** 粘贴解析结果:字段只在命中时存在,调用方按需覆盖,未命中项不动现有内容 */
+export type ParsedCardText = { title?: string; body: string; signature?: string };
 
 /**
  * 剪贴板整段文本 → 卡片结构(标题为转义后单行 html,正文走 textToBodyHtml)。
- * 末行不匹配「- 署名」格式返回 null,由调用方提示。
+ * 末行命中「- 署名」→ 完整三段(首行标题/中间正文/署名);
+ * 否则只覆盖正文(全部文本进正文,标题与署名不动)。空文本返回 null 由调用方提示。
  */
 export function parseCardText(text: string): ParsedCardText | null {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 3) return null;
-  const sig = lines.at(-1)!.match(/^-\s*(\S.*)$/);
-  if (sig == null) return null;
+  const trimmed = text.trim();
+  if (trimmed === "") return null;
+  const lines = trimmed.split(/\r?\n/);
+  const sig = lines.length >= 3 ? lines.at(-1)!.match(/^-\s*(\S.*)$/) : null;
+  const bodyLines = sig != null ? lines.slice(1, -1) : lines;
   // 正文只去首尾空行,中间空行是分节结构要保留
-  const bodyLines = lines.slice(1, -1);
   while (bodyLines.length > 0 && bodyLines[0]!.trim() === "") bodyLines.shift();
   while (bodyLines.length > 0 && bodyLines.at(-1)!.trim() === "") bodyLines.pop();
   return {
-    title: escapeHtml(lines[0]!.trim()),
+    ...(sig != null ? { title: escapeHtml(lines[0]!.trim()) } : {}),
     body: textToBodyHtml(bodyLines.join("\n")),
-    signature: sig[1]!.trim(),
+    ...(sig != null ? { signature: sig[1]!.trim() } : {}),
   };
+}
+
+/** html 片段 → 纯文本:剥标签 + 还原实体(escapeHtml 的逆) */
+function htmlToText(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+/** 正文 html → 纯文本行:行 = <div>,边界即换行(stripHtml 会把空行翻倍,复制走这条) */
+function bodyHtmlToText(html: string): string {
+  return html
+    .split(/<\/div>/i)
+    .map((chunk) => htmlToText(chunk))
+    .join("\n")
+    .replace(/\n+$/, "");
+}
+
+/**
+ * 卡片 → 整段文本(粘贴解析的逆操作):标题 + 正文行 + 末行「- 署名」。
+ * 多页正文以空行相连(回贴为单页长图);标题行保留占位(空标题回贴不吞正文首行);署名空则省略末行。
+ */
+export function cardToText(title: string, bodies: string[], signature: string): string {
+  const bodyText = bodies.map(bodyHtmlToText).filter((t) => t.trim() !== "").join("\n\n");
+  const t = htmlToText(title).trim();
+  const parts: string[] = [];
+  if (t !== "" || bodyText !== "") parts.push(t, bodyText);
+  const sig = signature.trim();
+  if (sig !== "") parts.push(`- ${sig}`);
+  return parts.join("\n");
 }
