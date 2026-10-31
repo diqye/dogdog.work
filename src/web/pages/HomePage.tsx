@@ -4,7 +4,7 @@
  * 不加载 shiki 引擎,首屏零额外成本。
  */
 
-import { THEMES, themeBackgroundStyle } from "../card/themes";
+import { THEMES, resolveTheme, themeBackgroundStyle } from "../card/themes";
 
 /** 代码卡示例:手写着色(one-dark 配色),只为传达视觉,不跑高亮引擎 */
 const CODE_SAMPLE = (
@@ -21,7 +21,7 @@ const CODE_SAMPLE = (
 );
 
 export function HomePage() {
-  const poemTheme = THEMES[0]!;
+  const poemTheme = resolveTheme(THEMES[0]!.id);
   return (
     <div className="min-h-dvh bg-canvas flex flex-col">
       <header className="px-4 sm:px-6 py-5 flex items-center justify-between">

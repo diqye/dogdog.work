@@ -9,6 +9,36 @@ export const CARD_H = 1440;
 /** 导出垫层 padding(卡外四周):预览缩放/导出尺寸计算都带它 */
 export const CARD_PAD = 72;
 
+/** 卡面投影规格:预览拼 CSS box-shadow;导出走 canvas shadow 合成
+ * (WebKit 在 SVG foreignObject 里渲染 box-shadow 有 bug —— iOS 导出阴影右半发重,故导出不含 CSS 阴影) */
+export interface ShadowSpec {
+  x: number;
+  y: number;
+  blur: number;
+  color: string;
+}
+
+/** 双墨投影几何:近影勾边 + 远影浮起;向下延伸(y+blur)不得超垫层 padding 72,否则合成时切边 */
+const SHADOW_GEOMS = [
+  { x: 0, y: 6, blur: 18, alpha: 0.12 },
+  { x: 0, y: 24, blur: 48, alpha: 0.22 },
+] as const;
+
+/** 默认投影墨色:近黑的蓝灰(浅色垫层上用);深色垫层应配亮色(见装裱色板) */
+export const SHADOW_INK = "#0f172a";
+
+/** 投影墨色 → 完整投影规格:同一几何,颜色随装裱换 */
+export function shadowSpecs(ink: string): ShadowSpec[] {
+  return SHADOW_GEOMS.map((g) => ({ ...g, color: hexToRgba(ink, g.alpha) }));
+}
+
+export const shadowCss = (specs: ShadowSpec[]): string => specs.map((s) => `${s.x}px ${s.y}px ${s.blur}px ${s.color}`).join(", ");
+
+function hexToRgba(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
 export interface CardContent {
   /** 单行富文本(html),空串 = 不渲染 */
   title: string;

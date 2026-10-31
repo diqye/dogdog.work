@@ -5,15 +5,15 @@
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { CARD_W, CARD_H, CARD_PAD, textToBodyHtml, stripHtml, parseCardText, cardToText, FONT_SIZES, ALIGNS, SIG_POSITIONS, type CardContent } from "../card/types";
-import { THEMES, themeById, themeBackgroundStyle, accentDots } from "../card/themes";
+import { CARD_W, CARD_H, CARD_PAD, shadowSpecs, textToBodyHtml, stripHtml, parseCardText, cardToText, FONT_SIZES, ALIGNS, SIG_POSITIONS, type CardContent } from "../card/types";
+import { THEMES, resolveTheme, themeBackgroundStyle, accentDots, PAPERS, paperById, MATS, matById, FLAT_PRESETS, flatPresetById } from "../card/themes";
 import { FONTS, fontById } from "../card/fonts";
 import { Poem, type Align, type FontSize, type SigPos } from "../card/templates/Poem";
 import { exportCards } from "../lib/export";
 import { useFitScale } from "../lib/useFitScale";
 import { encodeCardState, decodeCardState, type CardState } from "../card/share";
 import { SelectionToolbar } from "../components/SelectionToolbar";
-import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, ChevronLeft, ChevronRight, ClipboardPaste, Copy, Download, Link2, Plus, Trash2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, ChevronLeft, ChevronRight, ClipboardPaste, Copy, Download, ImageUp, Link2, Plus, Trash2, X } from "lucide-react";
 
 const DEFAULT_TITLE = "哔";
 const DEFAULT_BODY = `我大喊你的名字
@@ -40,6 +40,8 @@ const LS_SETTINGS_KEY = "card-settings";
 
 interface SavedSettings {
   themeId?: string;
+  presetId?: string;
+  matId?: string;
   fontSize?: FontSize;
   align?: Align;
   sigPos?: SigPos;
@@ -53,6 +55,8 @@ const SAVED: SavedSettings = (() => {
     const s = JSON.parse(localStorage.getItem(LS_SETTINGS_KEY) ?? "{}") as Record<string, unknown>;
     return {
       themeId: THEMES.some((t) => t.id === s.themeId) ? (s.themeId as string) : undefined,
+      presetId: typeof s.presetId === "string" ? s.presetId : undefined,
+      matId: typeof s.matId === "string" ? s.matId : undefined,
       fontSize: FONT_SIZES.includes(s.fontSize as FontSize) ? (s.fontSize as FontSize) : undefined,
       align: ALIGNS.includes(s.align as Align) ? (s.align as Align) : undefined,
       sigPos: SIG_POSITIONS.includes(s.sigPos as SigPos) ? (s.sigPos as SigPos) : undefined,
@@ -79,6 +83,14 @@ export function CardPage() {
   const [sigPos, setSigPos] = useState<SigPos>(INITIAL?.sigPos ?? SAVED.sigPos ?? "br");
   const [dateOn, setDateOn] = useState(INITIAL?.dateOn ?? SAVED.dateOn ?? true);
   const [themeId, setThemeId] = useState(INITIAL?.themeId ?? SAVED.themeId ?? THEMES[0]!.id);
+  // 图组覆盖(flat 主题):图+纸底一体预制组合,null = 主题默认;随分享链携带
+  const [presetId, setPresetId] = useState<string | null>(INITIAL?.presetId ?? SAVED.presetId ?? null);
+  // 上传图(flat 主题,dataURL):仅内存态,不进分享链不持久化,刷新回预制图
+  const [imageUpload, setImageUpload] = useState<string | null>(null);
+  // 装裱垫层底色(卡外四周):全主题生效;null = 月灰
+  const [matId, setMatId] = useState<string | null>(INITIAL?.matId ?? SAVED.matId ?? null);
+  // 生效图组:预设覆盖优先,否则主题自带(图与纸底同源)
+  const preset = flatPresetById(presetId);
   // 字体临时覆盖:跟主题走(主题一点即清),用户手改后生效到导出;不持久化不进分享链
   const [fontOverrideId, setFontOverrideId] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState<FontSize>(INITIAL?.fontSize ?? SAVED.fontSize ?? "m");
@@ -90,11 +102,11 @@ export function CardPage() {
   const [copiedCard, setCopiedCard] = useState(false);
   const [hoverThemeId, setHoverThemeId] = useState<string | null>(null);
 
-  const theme = themeById(themeId);
+  const theme = resolveTheme(themeId, presetId ?? undefined);
   // 生效字体:覆盖值优先,否则主题绑定的
   const font = fontOverrideId != null ? fontById(fontOverrideId) : theme.font;
-  // 左上角同步展示:hover 中的主题,否则当前主题(名称 · 字体 · 配色点)
-  const infoTheme = themeById(hoverThemeId ?? themeId);
+  // 左上角同步展示:hover 中的主题(用其默认纸样),否则当前主题(名称 · 字体 · 配色点)
+  const infoTheme = hoverThemeId != null ? resolveTheme(hoverThemeId) : theme;
 
   const fitRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -138,9 +150,9 @@ export function CardPage() {
   // 设置变化写回 localStorage(含 url 打开后的手动调整,下次无参打开时生效);
   // 空署名不持久化 —— 分享链常无署名,回写会把默认值永久清空
   useEffect(() => {
-    const s: SavedSettings = { themeId, fontSize, align, sigPos, sigOn, dateOn, signature: signature === "" ? undefined : signature };
+    const s: SavedSettings = { themeId, presetId: presetId ?? undefined, matId: matId ?? undefined, fontSize, align, sigPos, sigOn, dateOn, signature: signature === "" ? undefined : signature };
     localStorage.setItem(LS_SETTINGS_KEY, JSON.stringify(s));
-  }, [themeId, fontSize, align, sigPos, signature, sigOn, dateOn]);
+  }, [themeId, presetId, matId, fontSize, align, sigPos, signature, sigOn, dateOn]);
 
   // 错误提示弹几秒自动消失
   useEffect(() => {
@@ -208,7 +220,11 @@ export function CardPage() {
     setExporting(true);
     setError(null);
     try {
-      const result = await exportCards(nodes, stripHtml(title).trim() || "诗卡", font.cssPath == null ? [] : [font.cssPath]);
+      const result = await exportCards(nodes, stripHtml(title).trim() || "诗卡", font.cssPath == null ? [] : [font.cssPath], {
+        bg: matById(matId).bg,
+        pad: CARD_PAD,
+        shadows: shadowSpecs(matById(matId).shadow),
+      });
       // 分享未弹出(手势过期/环境不支持)转为下载时告知用户去向
       if (result === "downloaded") setNotice("已转为逐张下载");
     } catch (err) {
@@ -220,7 +236,7 @@ export function CardPage() {
 
   /** 分享链接写入地址栏并复制;复制失败(权限/非 https)时地址栏已是链接,提示手动复制 */
   async function onShare() {
-    const state: CardState = { title, pages, signature, sigOn, sigPos, dateOn, themeId, fontSize, align };
+    const state: CardState = { title, pages, signature, sigOn, sigPos, dateOn, themeId, presetId, matId, fontSize, align };
     const url = `${location.origin}${location.pathname}?c=${encodeCardState(state)}`;
     history.replaceState(null, "", url);
     try {
@@ -271,6 +287,23 @@ export function CardPage() {
     }
     setCur(0);
   }
+
+  /** 换图(flat 主题):读为 dataURL 仅存内存,不落盘不上传;设置后覆盖预制图选择 */
+  function onPickImage(file: File | undefined) {
+    if (file == null) return;
+    if (!file.type.startsWith("image/")) {
+      setError("请选择图片文件");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") setImageUpload(reader.result);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // 生效图片带图源:上传图 > 图组预设 > 主题默认
+  const imageSrc = imageUpload ?? preset?.src;
 
   return (
     <div className="min-h-dvh bg-canvas">
@@ -328,6 +361,9 @@ export function CardPage() {
                   content={content}
                   themeId={themeId}
                   fontId={fontOverrideId ?? undefined}
+                  presetId={presetId ?? undefined}
+                  imageOverride={imageSrc}
+                  mat={matById(matId)}
                   fontSize={fontSize}
                   align={align}
                   sigPos={sigPos}
@@ -386,6 +422,50 @@ export function CardPage() {
               ))}
             </select>
           </div>
+
+          {/* 平铺版式专属参数行(字体行下方):图组下拉(图+纸底一体) + 换图(上传仅内存态,分享链只支持预制图) */}
+          {theme.layout === "flat" && (
+            <div className="w-full flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm text-ink-soft">
+              <select
+                value={presetId ?? ""}
+                onChange={(e) => {
+                  setPresetId(e.target.value === "" ? null : e.target.value);
+                  setImageUpload(null);
+                }}
+                title="图片 + 纸底一体的预制组合"
+                className="px-2 py-1 rounded-lg border border-line bg-surface hover:bg-canvas"
+              >
+                <option value="">主题默认</option>
+                {FLAT_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} · {paperById(p.paperId).name}</option>
+                ))}
+              </select>
+
+              <label className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-line bg-surface hover:bg-canvas cursor-pointer">
+                <ImageUp size={15} />
+                换图
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    onPickImage(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {imageUpload != null && (
+                <button
+                  onClick={() => setImageUpload(null)}
+                  title="撤掉上传图,回到下拉选择的预制图"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-line bg-surface hover:bg-canvas"
+                >
+                  <X size={15} />
+                  自定义图
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <SelectionToolbar cardRef={cardRef} accents={accentDots(theme)} />
@@ -486,11 +566,33 @@ export function CardPage() {
               日期
             </label>
           </div>
+
+          {/* 装裱垫层底色(卡外四周):全主题生效,预览与导出同步 */}
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-ink-soft">
+            <div className="flex items-center gap-2">
+              <span>装裱</span>
+              <div className="flex items-center gap-1.5">
+                {MATS.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setMatId(m.id === MATS[0]!.id ? null : m.id)}
+                    title={m.name}
+                    className={`w-6 h-6 rounded-full border border-line/60 ${matId === m.id || (matId == null && m.id === MATS[0]!.id) ? "ring-2 ring-primary ring-offset-2 ring-offset-canvas" : "hover:scale-110 transition-transform"}`}
+                    style={{ backgroundColor: m.bg }}
+                  />
+                ))}
+              </div>
+              <span className="text-xs text-ink-faint w-8">{matById(matId).name}</span>
+            </div>
+          </div>
         </div>
 
-          {/* 主题示例卡网格(控制列尾部):auto-fill 随容器宽自适应列数;渐变底 + 主题字体示例句 + 场景描述 */}
+          {/* 主题示例卡网格(控制列尾部):auto-fill 随容器宽自适应列数;渐变底/图满铺 + 主题字体示例句 + 场景描述,
+              平铺主题预览同卡面结构(图片带 + 纸底) */}
           <div className="w-full grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2.5">
-          {THEMES.map((t) => (
+          {THEMES.map((t) => {
+            const preview = resolveTheme(t.id);
+            return (
             <button
               key={t.id}
               onMouseEnter={() => setHoverThemeId(t.id)}
@@ -498,25 +600,45 @@ export function CardPage() {
               onClick={() => {
                 setThemeId(t.id);
                 setFontOverrideId(null);
+                setPresetId(null);
               }}
               className={`flex flex-col rounded-xl overflow-hidden transition-transform hover:scale-[1.03] text-left ${
                 themeId === t.id ? "ring-2 ring-primary ring-offset-2 ring-offset-canvas" : "border border-line shadow-sm"
               }`}
             >
-              <div
-                className="aspect-4/3 flex flex-col items-center justify-center px-1.5"
-                style={{ ...themeBackgroundStyle(t), color: t.ink }}
-              >
-                <span className="text-md leading-none tracking-widest" style={{ fontFamily: t.font.family }}>
-                  {t.sample}
-                </span>
-              </div>
+              {t.layout === "flat" ? (() => {
+                const p = resolveTheme(t.id);
+                if (p.layout !== "flat") return null;
+                return (
+                <div className="aspect-4/3 flex flex-col">
+                  <div
+                    className="flex-[3]"
+                    style={{ backgroundColor: p.background, backgroundImage: `url(${p.image})`, backgroundSize: "cover", backgroundPosition: "center" }}
+                  />
+                  <div className="flex-[2] flex items-center justify-center px-1.5" style={{ backgroundColor: p.paper.bg, color: p.ink }}>
+                    <span className="text-md leading-none tracking-widest" style={{ fontFamily: t.font.family }}>
+                      {t.sample}
+                    </span>
+                  </div>
+                </div>
+                );
+              })() : (
+                <div
+                  className="aspect-4/3 flex flex-col items-center justify-center px-1.5"
+                  style={{ ...themeBackgroundStyle(preview), color: preview.ink }}
+                >
+                  <span className="text-md leading-none tracking-widest" style={{ fontFamily: t.font.family }}>
+                    {t.sample}
+                  </span>
+                </div>
+              )}
               <div className="bg-surface px-2 py-1.5 flex flex-col">
                 <span className="text-sm text-ink font-medium truncate">{t.name} · {t.font.name}</span>
                 <span className="text-xs text-ink-faint leading-tight">{t.desc}</span>
               </div>
             </button>
-          ))}
+            );
+          })}
           </div>
         </div>
       </main>
@@ -524,7 +646,7 @@ export function CardPage() {
       {/* 离屏导出层:全部页按设计尺寸渲染(无 scale/编辑态),导出逐张从此截取 */}
       <div aria-hidden ref={exportWrapRef} style={{ position: "fixed", left: -9999, top: 0, pointerEvents: "none" }}>
         {pages.map((_, i) => (
-          <Poem key={i} content={contentAt(i)} showTitle={i === 0} themeId={themeId} fontId={fontOverrideId ?? undefined} fontSize={fontSize} align={align} sigPos={sigPos} />
+          <Poem key={i} content={contentAt(i)} showTitle={i === 0} themeId={themeId} fontId={fontOverrideId ?? undefined} presetId={presetId ?? undefined} imageOverride={imageSrc} mat={matById(matId)} fontSize={fontSize} align={align} sigPos={sigPos} />
         ))}
       </div>
     </div>

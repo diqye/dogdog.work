@@ -14,7 +14,7 @@ import { escapeHtml } from "../lib/html";
 import { CODE_FONT_SIZES, type CodeFontSize } from "./share";
 import { codeLangById } from "./languages";
 import { codeThemeById } from "./themes";
-
+import { SHADOW_INK, shadowSpecs, shadowCss } from "../card/types";
 /** 卡片逻辑尺寸:宽随最长行自适应(min ~ max),高随内容自适应 */
 export const CODE_CARD_W = 1080;
 export const CODE_CARD_MIN_W = 480;
@@ -27,8 +27,7 @@ const CODE_FONT_FAMILY = `"JetBrains Mono", "LXGW WenKai", monospace`;
 
 /** 导出垫层(卡外四周)统一配色:中明度冷银灰(月白装裱),凸显圆角卡(同诗卡) */
 const PAD_BG = "#d7dade";
-/** 卡面投影(双墨:近影勾边+远影浮起):向下延伸(dy+blur)不得超垫层 padding 72,否则截图切边 */
-const CARD_SHADOW = "0 6px 18px rgba(15, 23, 42, 0.12), 0 24px 48px rgba(15, 23, 42, 0.22)";
+const CARD_SHADOW = shadowCss(shadowSpecs(SHADOW_INK));
 
 export interface CodeCardProps {
   code: string;
@@ -106,6 +105,7 @@ export function CodeCard({
     // 垫层:fit-content 收缩贴卡(父容器无宽,块级默认会撑满导出层视口)
     <div style={{ backgroundColor: PAD_BG, padding: 72, width: "fit-content" }}>
       <div
+        data-export-card=""
         style={{
           width: cardW,
           backgroundColor: theme.bg,

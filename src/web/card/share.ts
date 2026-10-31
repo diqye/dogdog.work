@@ -16,6 +16,10 @@ export const CardStateSchema = z.object({
   sigPos: z.enum(SIG_POSITIONS),
   dateOn: z.boolean(),
   themeId: z.string(),
+  /** 平铺版式图组(flat 主题):图+纸底一体的预制组合,null/缺省 = 主题默认。上传图不进链接(预制图限定) */
+  presetId: z.string().nullish(),
+  /** 装裱垫层底色(卡外四周),全主题生效;null/缺省 = 月灰 */
+  matId: z.string().nullish(),
   fontSize: z.enum(FONT_SIZES),
   align: z.enum(ALIGNS),
 });

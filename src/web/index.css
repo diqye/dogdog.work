@@ -99,6 +99,8 @@
 .card-editable:empty::before {
   content: attr(data-ph);
   opacity: 0.35;
+  /* 纹理填字模式字色透明,占位符回退到真实墨色(见 Poem --ph-color) */
+  color: var(--ph-color, inherit);
 }
 
 /* ---- 代码卡:shiki 输出的 pre 归零,排版全部由 .code-body 继承 ---- */

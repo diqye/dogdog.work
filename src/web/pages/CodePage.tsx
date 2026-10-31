@@ -10,6 +10,7 @@ import { CODE_THEMES } from "../code/themes";
 import { highlightCode } from "../code/highlight";
 import { CODE_FONT_SIZES, encodeCodeState, decodeCodeState, type CodeState, type CodeFontSize } from "../code/share";
 import { exportCards } from "../lib/export";
+import { SHADOW_INK, shadowSpecs } from "../card/types";
 import { useFitScale } from "../lib/useFitScale";
 import { ArrowLeft, Download, Link2 } from "lucide-react";
 
@@ -119,7 +120,7 @@ export function CodePage() {
     setExporting(true);
     setError(null);
     try {
-      await exportCards([node], filename.trim() || "代码卡", FONT_CSS_PATHS);
+      await exportCards([node], filename.trim() || "代码卡", FONT_CSS_PATHS, { bg: "#d7dade", pad: 72, shadows: shadowSpecs(SHADOW_INK) });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

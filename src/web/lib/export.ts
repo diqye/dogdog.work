@@ -7,9 +7,18 @@
  */
 
 import { domToBlob } from "modern-screenshot";
+import type { ShadowSpec } from "../card/types";
 
 /** 出图倍率:设计尺寸 2x —— 文字锐度与体积的平衡点,不再按体积降档 */
 const EXPORT_SCALE = 2;
+
+/** 装裱合成规格:导出时卡面截图 + 垫层底色 + canvas 投影在离屏 canvas 里合成
+ * (垫层与阴影不入截图源,绕开 WebKit foreignObject 的 box-shadow bug) */
+export interface MatSpec {
+  bg: string;
+  pad: number;
+  shadows: ShadowSpec[];
+}
 
 /**
  * 正文居中层布局冻结:flex + shrink-to-fit 的正文容器宽度恰等于内容宽(零余量),
@@ -118,6 +127,7 @@ export async function exportCards(
   nodes: HTMLElement[],
   baseName: string,
   fontCssPaths: string[] = [],
+  mat?: MatSpec,
 ): Promise<"shared" | "downloaded"> {
   // 字体分包全部就绪再截,避免缺字回退系统字体;全页文本合并,嵌入命中分包
   const fontCss = await buildFontEmbedCSS(nodes.map((n) => n.innerText).join(""), fontCssPaths);
@@ -129,15 +139,22 @@ export async function exportCards(
   // 串行多页截图必然超时,分享会静默变下载
   const blobs = await Promise.all(
     nodes.map(async (node) => {
+      // 传 mat 时截图源只取卡面(垫层/阴影离屏合成);田卡向后兼容整节点截图
+      const card = mat != null ? (node.querySelector<HTMLElement>("[data-export-card]") ?? node) : node;
       const unfreeze = freezeBodyLayout(node);
+      // 卡面自带 CSS 投影仅限预览;导出的阴影由 canvas 合成,截前摘除
+      const shadowBak = card.style.boxShadow;
+      card.style.boxShadow = "none";
       try {
-        return await domToBlob(node, {
-          height: node.offsetHeight,
+        const raw = await domToBlob(card, {
+          height: card.offsetHeight,
           scale: EXPORT_SCALE,
           // 系统字体主题无 cssText,font:false 连文档字体扫描一并跳过
           font: fontCss === "" ? false : { cssText: fontCss },
         });
+        return mat != null ? await composeMat(raw, mat) : raw;
       } finally {
+        card.style.boxShadow = shadowBak;
         unfreeze();
       }
     }),
@@ -168,4 +185,41 @@ export async function exportCards(
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
   return "downloaded";
+}
+
+/** 卡面截图 → 装裱图:垫层底色铺满,投影用 canvas shadowBlur 逐层画(多层的画不清除前层,叠加即双墨) */
+async function composeMat(cardBlob: Blob, mat: MatSpec): Promise<Blob> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("卡面截图合成失败"));
+    el.src = URL.createObjectURL(cardBlob);
+  });
+  try {
+  const pad = mat.pad * EXPORT_SCALE;
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width + pad * 2;
+  canvas.height = img.height + pad * 2;
+  const ctx = canvas.getContext("2d");
+  if (ctx == null) throw new Error("卡面截图合成失败");
+  ctx.fillStyle = mat.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (const s of mat.shadows) {
+    ctx.shadowColor = s.color;
+    ctx.shadowBlur = s.blur * EXPORT_SCALE;
+    ctx.shadowOffsetX = s.x * EXPORT_SCALE;
+    ctx.shadowOffsetY = s.y * EXPORT_SCALE;
+    ctx.drawImage(img, pad, pad);
+  }
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.drawImage(img, pad, pad);
+  return await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((b) => (b != null ? resolve(b) : reject(new Error("卡面截图合成失败"))), "image/png"),
+  );
+  } finally {
+    URL.revokeObjectURL(img.src);
+  }
 }
