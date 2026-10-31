@@ -297,7 +297,22 @@ export function CardPage() {
     }
     const reader = new FileReader();
     reader.onload = () => {
-      if (typeof reader.result === "string") setImageUpload(reader.result);
+      if (typeof reader.result !== "string") return;
+      // 压缩后再存:原图(手机照片数 MB)的 base64 进导出 SVG,会被 WebKit 按超长 data URI 静默丢弃
+      // (主题纹理几百 KB 能导出、上传图导不出正是这个量级差);限宽 1600 + JPEG 0.85,视觉无损
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 1600 / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setImageUpload(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => {
+        if (typeof reader.result === "string") setImageUpload(reader.result);
+      }; // 解码失败(如 HEIC)退回原图
+      img.src = reader.result;
     };
     reader.readAsDataURL(file);
   }
@@ -430,7 +445,6 @@ export function CardPage() {
                 value={presetId ?? ""}
                 onChange={(e) => {
                   setPresetId(e.target.value === "" ? null : e.target.value);
-                  setImageUpload(null);
                 }}
                 title="图片 + 纸底一体的预制组合"
                 className="px-2 py-1 rounded-lg border border-line bg-surface hover:bg-canvas"

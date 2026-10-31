@@ -118,6 +118,30 @@ async function buildFontEmbedCSSFrom(cssPath: string, text: string): Promise<str
   return chunks.join("\n");
 }
 
+/** WebKit(iOS/桌面 Safari)在 foreignObject 光栅化里画不出 background-clip:text 的纹理填字
+ * (整层文字消失),CSS filter 引用的 SVG 滤镜同样不可靠;导出前降级为实色墨保可读。
+ * 桌面 Chrome 不受影响(排除 Chromium 系 UA)。返回恢复函数,截完还原预览。 */
+function degradeTextLayerForWebKit(card: HTMLElement): () => void {
+  const ua = navigator.userAgent;
+  if (!/WebKit/i.test(ua) || /Chrome|Chromium|Edg|OPR|Android/i.test(ua)) return () => {};
+  const el = card.querySelector<HTMLElement>("[data-export-ink]");
+  if (el == null) return () => {};
+  // 降级范圍:容器 + 容器内 h1(h1 有自身显式 transparent 对抗全局样式,不一起改则标题仍不可见)
+  const els = [el, ...Array.from(el.querySelectorAll<HTMLElement>("h1"))];
+  const baks = els.map((e) => e.getAttribute("style"));
+  el.style.filter = "none";
+  el.style.backgroundImage = "none";
+  el.style.backgroundClip = "";
+  el.style.webkitBackgroundClip = "";
+  for (const e of els) e.style.color = el.dataset.exportInk ?? "";
+  return () => {
+    for (const [e, css] of els.map((e, i) => [e, baks[i]] as const)) {
+      if (css != null) e.setAttribute("style", css);
+      else e.removeAttribute("style");
+    }
+  };
+}
+
 /**
  * 导出多页 PNG:多页时命名 `名-1.png/-2.png…`,单页保持 `名.png`。
  * 优先 Web Share(移动端 Safari 分享面板可「存储图像」进相册,a[download] 只进文件 App);
@@ -145,6 +169,7 @@ export async function exportCards(
       // 卡面自带 CSS 投影仅限预览;导出的阴影由 canvas 合成,截前摘除
       const shadowBak = card.style.boxShadow;
       card.style.boxShadow = "none";
+      const undegrade = degradeTextLayerForWebKit(card);
       try {
         const raw = await domToBlob(card, {
           height: card.offsetHeight,
@@ -155,6 +180,7 @@ export async function exportCards(
         return mat != null ? await composeMat(raw, mat) : raw;
       } finally {
         card.style.boxShadow = shadowBak;
+        undegrade();
         unfreeze();
       }
     }),

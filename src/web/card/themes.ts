@@ -116,7 +116,7 @@ export interface FlatPreset {
 }
 
 export const FLAT_PRESETS: FlatPreset[] = [
-  { id: "xingye", name: "星野", src: "/static/images/theme-starry.jpg", paperId: "xuanmo", fallbackBg: "#0c1020" },
+  { id: "xingye", name: "星野", src: "/static/images/theme-starry.jpg", paperId: "nuanmi", fallbackBg: "#0c1020" },
   { id: "xueyuan", name: "雪原", src: "/static/images/theme-snowfield.jpg", paperId: "yuebai", fallbackBg: "#1e2834" },
   { id: "muhai", name: "暮海", src: "/static/images/theme-dusksea.jpg", paperId: "nuanmi", fallbackBg: "#182232" },
   { id: "chenguang", name: "晨光", src: "/static/images/theme-dawnfield.jpg", paperId: "nuanmi", fallbackBg: "#38261a" },

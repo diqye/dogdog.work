@@ -9,7 +9,7 @@
  * state 与 DOM 恒等 → 光标不跳。
  */
 
-import { useId, useLayoutEffect, useRef, type CSSProperties, type ClipboardEvent, type KeyboardEvent } from "react";
+import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type ClipboardEvent, type KeyboardEvent } from "react";
 import type { CardContent } from "../types";
 import { CARD_H, CARD_W, CARD_PAD, SHADOW_INK, shadowSpecs, shadowCss } from "../types";
 import { resolveTheme, themeBackgroundStyle, type CardMat } from "../themes";
@@ -76,6 +76,20 @@ export function Poem({ content, themeId, fontId, presetId, imageOverride, mat, f
   const bodyTextRef = useRef<HTMLDivElement>(null);
   useSyncHtml(titleRef, content.title);
   useSyncHtml(bodyTextRef, content.body);
+
+  // 纹理填字 + webfont swap:background-clip:text 在字体替换后不重绘(Chrome bug,首屏文字残缺/消失),
+  // 字体就绪后重建文字层强制重画;内容由每渲染同步回灌,不丢
+  const [fontSwapped, setFontSwapped] = useState(false);
+  useLayoutEffect(() => {
+    if (cover?.inkLayer == null) return;
+    let alive = true;
+    document.fonts.ready.then(() => {
+      if (alive) setFontSwapped(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [cover?.inkLayer != null]);
 
   const base: CSSProperties = {
     width: CARD_W,
@@ -174,12 +188,20 @@ export function Poem({ content, themeId, fontId, presetId, imageOverride, mat, f
           </div>
         )}
 
-        {/* 平铺版式图片带:满幅定高 cover;用户上传图(dataURL)优先于主题预制图 */}
+        {/* 平铺版式图片带:满幅定高 cover;用户上传图(dataURL)优先于主题预制图
+            注:用 background-image 而非 <img> —— WebKit 在 foreignObject 光栅化里 <img> 不渲染(iOS 导出丢图),
+            background-image 同为纹理主题已验证可行的路径 */}
         {flat && (
-          <img
-            src={imageOverride ?? theme.image}
-            alt=""
-            style={{ width: "100%", height: FLAT_IMG_H, objectFit: "cover", display: "block", backgroundColor: theme.background }}
+          <div
+            style={{
+              width: "100%",
+              height: FLAT_IMG_H,
+              flexShrink: 0,
+              backgroundImage: `url(${imageOverride ?? theme.image})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundColor: theme.background,
+            }}
           />
         )}
 
@@ -243,6 +265,8 @@ export function Poem({ content, themeId, fontId, presetId, imageOverride, mat, f
           inner
         ) : (
           <div
+            key={fontSwapped ? "swapped" : "boot"}
+            data-export-ink={textLayer != null ? theme.ink : undefined}
             style={{
               display: "flex",
               flexDirection: "column",
